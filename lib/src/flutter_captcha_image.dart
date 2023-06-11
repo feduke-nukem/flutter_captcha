@@ -86,13 +86,13 @@ class FlutterCaptchaImage {
     return image;
   }
 
-  Map<Coordinates, Uint8List> split({
+  Map<Alignment, Uint8List> split({
     required FlutterCaptchaSplit split,
   }) {
     return _splitImage(value, split: split);
   }
 
-  Future<Map<Coordinates, Uint8List>> splitWithDimension({
+  Future<Map<Alignment, Uint8List>> splitWithDimension({
     required FlutterCaptchaSplit split,
     required double dimension,
   }) async {
@@ -107,7 +107,7 @@ class FlutterCaptchaImage {
 
   static Future<ByteData> _loadFrom(String path) async => rootBundle.load(path);
 
-  Map<Coordinates, Uint8List> _splitImage(
+  Map<Alignment, Uint8List> _splitImage(
     img_lib.Image image, {
     required FlutterCaptchaSplit split,
   }) {
@@ -115,31 +115,19 @@ class FlutterCaptchaImage {
     final width = (image.width / split.xCount).round();
     final height = (image.height / split.yCount).round();
 
-    final output = <Coordinates, Uint8List>{};
-
     // Split image to parts
     final parts = <img_lib.Image>[];
     for (int i = 0; i < split.yCount; i++) {
       for (int j = 0; j < split.xCount; j++) {
-        final coordinates = Coordinates(x, y);
-        final part = img_lib.copyCrop(
-          image,
-          x: x,
-          y: y,
-          width: width,
-          height: height,
+        parts.add(
+          img_lib.copyCrop(
+            image,
+            x: x,
+            y: y,
+            width: width,
+            height: height,
+          ),
         );
-        output[coordinates] = img_lib.encodePng(part);
-
-        // parts.add(
-        //   img_lib.copyCrop(
-        //     image,
-        //     x: x,
-        //     y: y,
-        //     width: width,
-        //     height: height,
-        //   ),
-        // );
         x += width;
       }
       x = 0;
@@ -147,14 +135,14 @@ class FlutterCaptchaImage {
     }
 
     // convert image from image package to Image Widget to display
-    // final output = <Coordinates, Uint8List>{};
+    final output = <Alignment, Uint8List>{};
 
-    // for (var i = 0; i < split.alignments.length; i++) {
-    //   final image = parts[i];
-    //   final alignment = split.alignments[i];
+    for (var i = 0; i < split.alignments.length; i++) {
+      final image = parts[i];
+      final alignment = split.alignments[i];
 
-    //   output[alignment] = img_lib.encodePng(image);
-    // }
+      output[alignment] = img_lib.encodePng(image);
+    }
 
     return output;
   }

@@ -106,12 +106,11 @@ final class _FlutterCaptchaState extends State<FlutterCaptcha> {
   }
 
   Future<void> _init() async {
-    // _initControllers(await _splitImages());
-    await _splitImages();
+    _initControllers(await _splitImages());
     setState(() {});
   }
 
-  Future<Map<Coordinates, Uint8List>> _splitImages() async {
+  Future<Map<Alignment, Uint8List>> _splitImages() async {
     final image = await FlutterCaptchaImage.fromAsset(widget.assets.first);
     final query = _mediaQueryData;
 

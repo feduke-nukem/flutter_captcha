@@ -49,7 +49,7 @@ class _MyHomePageState extends State<MyHomePage> {
           title: const Text('Captcha'),
         ),
         body: FlutterCaptcha(
-          split: const FlutterCaptchaSplit.threeByThree(),
+          split: const FlutterCaptchaSplit.twoByTwo(),
           assets: [_Assets.shrek.path],
           imageProviders: [
             NetworkImage(
