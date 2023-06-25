@@ -1,21 +1,18 @@
 import 'dart:async';
 
-import 'package:flutter/rendering.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_captcha/src/flutter_captcha_split.dart';
+import 'package:flutter/foundation.dart';
 import 'package:image/image.dart' as img_lib;
-import 'dart:ui' as ui;
 
-class Coordinates {
-  final int x;
-  final int y;
+class FlutterCaptchaPartPosition {
+  final double x;
+  final double y;
 
-  const Coordinates(this.x, this.y);
+  const FlutterCaptchaPartPosition(this.x, this.y);
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is Coordinates &&
+      other is FlutterCaptchaPartPosition &&
           runtimeType == other.runtimeType &&
           x == other.x &&
           y == other.y;
@@ -27,248 +24,59 @@ class Coordinates {
 class FlutterCaptchaImage {
   final img_lib.Image value;
 
-  const FlutterCaptchaImage._(this.value);
+  const FlutterCaptchaImage(this.value);
 
-  static Future<FlutterCaptchaImage> fromProvider(
-      ImageProvider imageProvider) async {
-    final completer = Completer<img_lib.Image>();
-    final ImageStreamListener listener =
-        ImageStreamListener((ImageInfo imageInfo, bool synchronousCall) async {
-      final image = _convertFlutterUiToImage(imageInfo.image);
-
-      completer.complete(image);
-    });
-
-    final imageStream = imageProvider.resolve(ImageConfiguration.empty);
-    imageStream.addListener(listener);
-
-    final image = await completer.future;
-
-    return FlutterCaptchaImage._(image);
-  }
-
-  static Future<FlutterCaptchaImage> fromAsset(String path) async {
-    final data = await _loadFrom(path);
-
-    // Utilize flutter's built-in decoder to decode asset images as it will be
-    // faster than the dart decoder.
-    final buffer =
-        await ui.ImmutableBuffer.fromUint8List(data.buffer.asUint8List());
-
-    final id = await ui.ImageDescriptor.encoded(buffer);
-    final codec = await id.instantiateCodec(
-        targetHeight: id.height, targetWidth: id.width);
-
-    final fi = await codec.getNextFrame();
-
-    final uiImage = fi.image;
-    final uiBytes = await uiImage.toByteData();
-
-    final image = img_lib.Image.fromBytes(
-        width: id.width,
-        height: id.height,
-        bytes: uiBytes!.buffer,
-        numChannels: 4);
-
-    return FlutterCaptchaImage._(image);
-  }
-
-  static Future<img_lib.Image> _convertFlutterUiToImage(ui.Image input) async {
-    final bytes = await input.toByteData();
-
-    final image = img_lib.Image.fromBytes(
-      width: input.width,
-      height: input.height,
-      bytes: bytes!.buffer,
-      numChannels: 4,
-    );
-
-    return image;
-  }
-
-  Map<Alignment, Uint8List> split({
-    required FlutterCaptchaSplit split,
-  }) {
-    return _splitImage(value, split: split);
-  }
-
-  Future<Map<Alignment, Uint8List>> splitWithDimension({
-    required FlutterCaptchaSplit split,
-    required double dimension,
+  Future<Map<FlutterCaptchaPartPosition, Uint8List>> split({
+    required int splitMultiplier,
+    required double size,
+    required bool preferIsolate,
   }) async {
-    final command = img_lib.Command()
-      ..image(value)
-      ..copyResizeCropSquare(size: dimension.round());
+    if (preferIsolate) {
+      return compute(
+        (_) async {
+          final image = img_lib.copyResizeCropSquare(value, size: size.toInt());
 
-    await command.executeThread();
+          return _splitImage(image, splitMultiplier: splitMultiplier);
+        },
+        null,
+      );
+    }
 
-    return _splitImage(command.outputImage!, split: split);
+    final command = img_lib.Command()..image(value);
+    command.copyResizeCropSquare(size: size.toInt());
+    await command.execute();
+
+    return _splitImage(command.outputImage!, splitMultiplier: splitMultiplier);
   }
 
-  static Future<ByteData> _loadFrom(String path) async => rootBundle.load(path);
-
-  Map<Alignment, Uint8List> _splitImage(
+  Map<FlutterCaptchaPartPosition, Uint8List> _splitImage(
     img_lib.Image image, {
-    required FlutterCaptchaSplit split,
+    required int splitMultiplier,
   }) {
-    var x = 0, y = 0;
-    final width = (image.width / split.xCount).round();
-    final height = (image.height / split.yCount).round();
+    var x = 0.0, y = 0.0;
+    final width = image.width / splitMultiplier;
+    final height = image.height / splitMultiplier;
 
-    // Split image to parts
-    final parts = <img_lib.Image>[];
-    for (int i = 0; i < split.yCount; i++) {
-      for (int j = 0; j < split.xCount; j++) {
-        parts.add(
-          img_lib.copyCrop(
-            image,
-            x: x,
-            y: y,
-            width: width,
-            height: height,
-          ),
+    final output = <FlutterCaptchaPartPosition, Uint8List>{};
+
+    for (int i = 0; i < splitMultiplier; i++) {
+      for (int j = 0; j < splitMultiplier; j++) {
+        final position = FlutterCaptchaPartPosition(x, y);
+        final part = img_lib.copyCrop(
+          image,
+          x: x.toInt(),
+          y: y.toInt(),
+          width: width.toInt(),
+          height: height.toInt(),
         );
+        output[position] = img_lib.encodePng(part);
+
         x += width;
       }
       x = 0;
       y += height;
     }
 
-    // convert image from image package to Image Widget to display
-    final output = <Alignment, Uint8List>{};
-
-    for (var i = 0; i < split.alignments.length; i++) {
-      final image = parts[i];
-      final alignment = split.alignments[i];
-
-      output[alignment] = img_lib.encodePng(image);
-    }
-
     return output;
   }
 }
-
-
-// class FlutterCaptchaImage {
-//   final img_lib.Image value;
-
-//   const FlutterCaptchaImage._(this.value);
-
-//   static Future<FlutterCaptchaImage> fromProvider(
-//       ImageProvider imageProvider) async {
-//     final completer = Completer<img_lib.Image>();
-//     final ImageStreamListener listener =
-//         ImageStreamListener((ImageInfo imageInfo, bool synchronousCall) async {
-//       final image = _convertFlutterUiToImage(imageInfo.image);
-
-//       completer.complete(image);
-//     });
-
-//     final imageStream = imageProvider.resolve(ImageConfiguration.empty);
-//     imageStream.addListener(listener);
-
-//     final image = await completer.future;
-
-//     return FlutterCaptchaImage._(image);
-//   }
-
-//   static Future<FlutterCaptchaImage> fromAsset(String path) async {
-//     final data = await _loadFrom(path);
-
-//     // Utilize flutter's built-in decoder to decode asset images as it will be
-//     // faster than the dart decoder.
-//     final buffer =
-//         await ui.ImmutableBuffer.fromUint8List(data.buffer.asUint8List());
-
-//     final id = await ui.ImageDescriptor.encoded(buffer);
-//     final codec = await id.instantiateCodec(
-//         targetHeight: id.height, targetWidth: id.width);
-
-//     final fi = await codec.getNextFrame();
-
-//     final uiImage = fi.image;
-//     final uiBytes = await uiImage.toByteData();
-
-//     final image = img_lib.Image.fromBytes(
-//         width: id.width,
-//         height: id.height,
-//         bytes: uiBytes!.buffer,
-//         numChannels: 4);
-
-//     return FlutterCaptchaImage._(image);
-//   }
-
-//   static Future<img_lib.Image> _convertFlutterUiToImage(ui.Image input) async {
-//     final bytes = await input.toByteData();
-
-//     final image = img_lib.Image.fromBytes(
-//       width: input.width,
-//       height: input.height,
-//       bytes: bytes!.buffer,
-//       numChannels: 4,
-//     );
-
-//     return image;
-//   }
-
-//   Map<Alignment, Uint8List> split({
-//     required FlutterCaptchaSplit split,
-//   }) {
-//     return _splitImage(value, split: split);
-//   }
-
-//   Future<Map<Alignment, Uint8List>> splitWithDimension({
-//     required FlutterCaptchaSplit split,
-//     required double dimension,
-//   }) async {
-//     final command = img_lib.Command()
-//       ..image(value)
-//       ..copyResizeCropSquare(size: dimension.round());
-
-//     await command.executeThread();
-
-//     return _splitImage(command.outputImage!, split: split);
-//   }
-
-//   static Future<ByteData> _loadFrom(String path) async => rootBundle.load(path);
-
-//   Map<Alignment, Uint8List> _splitImage(
-//     img_lib.Image image, {
-//     required FlutterCaptchaSplit split,
-//   }) {
-//     var x = 0, y = 0;
-//     final width = (image.width / split.xCount).round();
-//     final height = (image.height / split.yCount).round();
-
-//     // Split image to parts
-//     final parts = <img_lib.Image>[];
-//     for (int i = 0; i < split.yCount; i++) {
-//       for (int j = 0; j < split.xCount; j++) {
-//         parts.add(
-//           img_lib.copyCrop(
-//             image,
-//             x: x,
-//             y: y,
-//             width: width,
-//             height: height,
-//           ),
-//         );
-//         x += width;
-//       }
-//       x = 0;
-//       y += height;
-//     }
-
-//     // convert image from image package to Image Widget to display
-//     final output = <Alignment, Uint8List>{};
-
-//     for (var i = 0; i < split.alignments.length; i++) {
-//       final image = parts[i];
-//       final alignment = split.alignments[i];
-
-//       output[alignment] = img_lib.encodePng(image);
-//     }
-
-//     return output;
-//   }
-// }
