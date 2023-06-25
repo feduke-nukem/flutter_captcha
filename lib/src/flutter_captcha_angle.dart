@@ -14,7 +14,7 @@ final class FlutterCaptchaAngle {
   factory FlutterCaptchaAngle.half() => const FlutterCaptchaAngle._(_half);
 
   static double _absoluteValue(double value) => value % 1;
-  static List<FlutterCaptchaAngle> allAngles() => [
+  static List<FlutterCaptchaAngle> all() => [
         FlutterCaptchaAngle.full(),
         FlutterCaptchaAngle.quarter(),
         FlutterCaptchaAngle.half(),
@@ -28,12 +28,15 @@ final class FlutterCaptchaAngle {
 
   FlutterCaptchaAngle turn() => FlutterCaptchaAngle._(value + _quarter);
 
-  FlutterCaptchaAngle operator *(double other) =>
-      FlutterCaptchaAngle._(value * other);
+  FlutterCaptchaAngle operator *(double other) => FlutterCaptchaAngle._(
+        value * other,
+      );
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is FlutterCaptchaAngle && value == other.value;
+
   @override
   int get hashCode => value.hashCode;
 }
