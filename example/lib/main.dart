@@ -27,6 +27,15 @@ final _inputs = [
       'https://images.pushsquare.com/b0d35b53cd1e4/cyberpunk-edgerunners-anime-review.large.jpg',
     ),
   ),
+  FlutterCaptchaInput.widget(
+    Container(
+      alignment: Alignment.center,
+      child: const Icon(
+        Icons.person,
+        size: 400,
+      ),
+    ),
+  ),
   ..._Assets.values.map((e) => FlutterCaptchaInput.asset(e.path))
 ];
 void main() {
@@ -198,7 +207,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   FilledButton(
                     onPressed: () async {
                       final sc = Scaffold.of(context);
-                      _controller.softReset();
+                      _controller.hardReset();
                       sc.closeDrawer();
                     },
                     child: const Text('Restart'),

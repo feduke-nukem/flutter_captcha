@@ -1,10 +1,4 @@
-import 'dart:async';
-
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' as services;
-import 'package:image/image.dart' as img_lib;
-import 'package:flutter_captcha/src/flutter_captcha_image.dart';
-import 'dart:ui' as ui;
+part of 'flutter_captcha.dart';
 
 /// {@template flutter_captcha_input}
 /// A captcha input for flutter.
@@ -24,6 +18,23 @@ abstract base class FlutterCaptchaInput {
     ImageProvider provider, {
     AssetBundle? bundle,
   }) = _ProviderInput;
+
+  factory FlutterCaptchaInput.widget(
+    Widget widget,
+  ) = _WidgetInput;
+
+  Future<img_lib.Image> _convertFlutterUiToImage(ui.Image input) async {
+    final bytes = await input.toByteData();
+
+    final image = img_lib.Image.fromBytes(
+      width: input.width,
+      height: input.height,
+      bytes: bytes!.buffer,
+      numChannels: 4,
+    );
+
+    return image;
+  }
 }
 
 final class _AssetInput extends FlutterCaptchaInput {
@@ -95,17 +106,19 @@ final class _ProviderInput extends FlutterCaptchaInput {
 
     return FlutterCaptchaImage(image);
   }
+}
 
-  Future<img_lib.Image> _convertFlutterUiToImage(ui.Image input) async {
-    final bytes = await input.toByteData();
+final class _WidgetInput extends FlutterCaptchaInput {
+  _WidgetInput(this.widget);
 
-    final image = img_lib.Image.fromBytes(
-      width: input.width,
-      height: input.height,
-      bytes: bytes!.buffer,
-      numChannels: 4,
-    );
+  final _completer = Completer<img_lib.Image>();
+  final Widget widget;
 
-    return image;
-  }
+  @override
+  Future<FlutterCaptchaImage> createImage() async =>
+      FlutterCaptchaImage(await _completer.future);
+
+  Future<void> _complete(ui.Image image) async => _completer.complete(
+        await _convertFlutterUiToImage(image),
+      );
 }

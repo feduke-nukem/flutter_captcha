@@ -14,7 +14,7 @@ typedef CaptchaParts = Map<CaptchaPartPosition, Uint8List>;
 /// {@endtemplate}
 typedef FlutterCaptchaPartBuilder = Widget Function(
   BuildContext context,
-  Widget child,
+  Widget part,
   bool isSolved,
 );
 
@@ -154,8 +154,6 @@ class _FlutterCaptchaPartState extends State<FlutterCaptchaPart> {
 
   @override
   Widget build(BuildContext context) {
-    final scaleFactor = widget.dimension / MediaQuery.of(context).size.width;
-
     var result = widget.canMove
         ? DragTarget<FlutterCaptchaPartController>(
             onWillAccept: (data) => widget.controller._canMove(data!._position),
@@ -215,8 +213,8 @@ class _FlutterCaptchaPartState extends State<FlutterCaptchaPart> {
     return AnimatedPositioned(
       onEnd: () => widget.controller.isBusy = false,
       curve: widget.moveCurve,
-      top: widget.controller.position.y * scaleFactor,
-      left: widget.controller.position.x * scaleFactor,
+      top: widget.controller.position.y,
+      left: widget.controller.position.x,
       duration: widget.moveDuration,
       child: ClipPath(child: result),
     );

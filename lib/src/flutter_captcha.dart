@@ -1,11 +1,17 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter_captcha/src/flutter_captcha_image.dart';
 import 'dart:math' as math;
-import 'package:flutter_captcha/src/flutter_captcha_input.dart';
+import 'dart:ui' as ui;
+import 'package:flutter/services.dart' as services;
+import 'package:image/image.dart' as img_lib;
 import 'package:flutter_captcha/src/flutter_captcha_part.dart';
 
 import 'angle.dart';
+
+part 'flutter_captcha_input.dart';
 
 /// {@template flutter_captcha}
 /// A captcha widget for flutter.
@@ -103,14 +109,14 @@ final class _FlutterCaptchaState extends State<FlutterCaptcha> {
 
     if (oldWidget != widget) widget.controller._bind(widget);
 
-    if (oldWidget.size != widget.size) {
+    if (oldWidget.size != widget.size ||
+        oldWidget.dimension != widget.dimension) {
       widget.controller._splitCurrentPartsAndSoftReset();
 
       return;
     }
 
-    if (oldWidget.dimension != widget.dimension ||
-        oldWidget.canMove != widget.canMove ||
+    if (oldWidget.canMove != widget.canMove ||
         oldWidget.canRotate != widget.canRotate) {
       widget.controller._softReset();
     }
@@ -119,13 +125,31 @@ final class _FlutterCaptchaState extends State<FlutterCaptcha> {
   @override
   Widget build(BuildContext context) {
     final partControllers = widget.controller.partControllersMap.values;
-    if (partControllers.isEmpty) {
-      return SizedBox.square(
-        dimension: widget.dimension,
-        child: widget.progressBuilder != null
-            ? Builder(builder: widget.progressBuilder!)
-            : const Center(child: CircularProgressIndicator()),
-      );
+    if (partControllers.isEmpty || widget.controller._isProcessing) {
+      final loader = widget.progressBuilder != null
+          ? Builder(builder: widget.progressBuilder!)
+          : const Center(child: CircularProgressIndicator());
+
+      final currentInput = widget.controller._currentInput;
+
+      if (currentInput is _WidgetInput) {
+        return SizedBox.square(
+          dimension: widget.dimension,
+          child: Stack(
+            children: [
+              _WidgetInputHandler(input: currentInput),
+              Positioned.fill(
+                child: ColoredBox(
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                ),
+              ),
+              loader,
+            ],
+          ),
+        );
+      }
+
+      return SizedBox.square(dimension: widget.dimension, child: loader);
     }
     final partSize = _partSize();
 
@@ -173,9 +197,7 @@ final class _FlutterCaptchaState extends State<FlutterCaptcha> {
   void _rebuild() => setState(() {});
 
   double _partSize() {
-    final partsCount = widget.size * widget.size;
-    final scaleFactor = widget.dimension / MediaQuery.of(context).size.width;
-    final partSize = widget.dimension / math.sqrt(partsCount) * scaleFactor;
+    final partSize = widget.dimension / widget.size;
 
     return partSize;
   }
@@ -197,11 +219,16 @@ final class FlutterCaptchaController extends ChangeNotifier {
 
   List<FlutterCaptchaInput> _inputs;
 
+  bool _isProcessing = false;
+
   @visibleForTesting
   List<FlutterCaptchaInput> get inputs => _inputs;
 
   @visibleForTesting
   int currentInputIndex = -1;
+
+  FlutterCaptchaInput? get _currentInput =>
+      currentInputIndex < 0 ? null : _inputs[currentInputIndex];
 
   @visibleForTesting
   CaptchaParts? currentParts;
@@ -265,13 +292,17 @@ final class FlutterCaptchaController extends ChangeNotifier {
       );
 
   Future<CaptchaParts> _splitInput(FlutterCaptchaInput input) async {
+    _isProcessing = true;
+    notifyListeners();
     final parts = await input.createImage();
 
-    return parts.split(
-      dimension: _widget!.dimension,
-      size: _widget!.size,
-      preferIsolate: _widget!.preferIsolate,
-    );
+    return parts
+        .split(
+          dimension: _widget!.dimension,
+          size: _widget!.size,
+          preferIsolate: _widget!.preferIsolate,
+        )
+        .whenComplete(() => _isProcessing = false);
   }
 
   void _initPartControllers(
@@ -326,5 +357,50 @@ final class FlutterCaptchaController extends ChangeNotifier {
     );
 
     _softReset();
+  }
+}
+
+class _WidgetInputHandler extends StatefulWidget {
+  final _WidgetInput input;
+
+  const _WidgetInputHandler({
+    required this.input,
+  });
+
+  @override
+  State<_WidgetInputHandler> createState() => __WidgetInputHandlerState();
+}
+
+class __WidgetInputHandlerState extends State<_WidgetInputHandler> {
+  final _key = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => _handleInput());
+  }
+
+  Future<void> _handleInput() async {
+    if (widget.input._completer.isCompleted) return;
+
+    try {
+      final boundary =
+          _key.currentContext!.findRenderObject() as RenderRepaintBoundary;
+      final image = await boundary.toImage(
+        pixelRatio: MediaQuery.of(context).devicePixelRatio,
+      );
+      widget.input._complete(image);
+    } on Object catch (e, stackTrace) {
+      widget.input._completer.completeError(e, stackTrace);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return RepaintBoundary(
+      key: _key,
+      child: widget.input.widget,
+    );
   }
 }
