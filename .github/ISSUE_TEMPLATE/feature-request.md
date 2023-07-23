@@ -2,9 +2,8 @@
 name: Feature request
 about: Suggest an idea for this project
 title: "\U0001F525 [FEATURE]"
-labels: ["enhancement"]
-assignees: 
-    - feduke-nukem
+labels: enhancement
+assignees: feduke-nukem
 
 ---
 
