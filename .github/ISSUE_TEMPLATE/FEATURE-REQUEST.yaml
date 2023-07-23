@@ -1,29 +1,23 @@
-name: Bug Report
-description: File a bug report
-title: "[Bug]: "
-labels: ["bug"]
+name: Feature Request
+description: File a feature request
+title: "[Feature]: "
+labels: ["feature request"]
 assignees:
   - feduke-nukem
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for taking the time to fill out this bug report!
+        Thanks for taking the time to fill out this feature request!
   - type: textarea
-    id: what-happened
+    id: your-idea
     attributes:
-      label: What happened?
-      description: Also tell us, what did you expect to happen?
-      placeholder: Tell us what you see!
-      value: "A bug happened!"
+      label: What is your idea?
+      description: Tell us about your idea.
+      placeholder: Your idea
+      value: "Your idea!"
     validations:
       required: true
-  - type: textarea
-    id: logs
-    attributes:
-      label: Relevant log output
-      description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
-      render: shell
   - type: checkboxes
     id: terms
     attributes:
