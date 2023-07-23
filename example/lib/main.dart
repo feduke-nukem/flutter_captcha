@@ -1,5 +1,3 @@
-// import 'dart:math' as math;
-
 import 'package:flutter/services.dart';
 import 'package:flutter_captcha/flutter_captcha.dart';
 import 'package:flutter/material.dart';
@@ -62,7 +60,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   final _controller = FlutterCaptchaController(inputs: _inputs);
-  int _splitSize = 3;
+  int _size = 3;
   bool _canMove = true;
   bool _canRotate = true;
   final _textEditingController = TextEditingController();
@@ -111,16 +109,16 @@ class _MyHomePageState extends State<MyHomePage> {
                     },
                   ),
                   Text(
-                    'Split size: $_splitSize',
+                    'Split size: $_size',
                     style: const TextStyle(fontSize: 20),
                   ),
                   Slider(
-                    value: _splitSize.toDouble(),
+                    value: _size.toDouble(),
                     min: 2,
                     max: 15,
                     onChanged: (value) {
                       setState(() {
-                        _splitSize = value.toInt();
+                        _size = value.toInt();
                       });
                     },
                   ),
@@ -150,7 +148,7 @@ class _MyHomePageState extends State<MyHomePage> {
                               );
                             } else {
                               setState(() {
-                                _controller.restart(
+                                _controller.hardReset(
                                   inputs: [
                                     FlutterCaptchaInput.provider(
                                       NetworkImage(
@@ -160,7 +158,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                   ],
                                 );
                               });
-                              _controller.restart();
+                              _controller.hardReset();
                             }
 
                             Scaffold.of(context).closeDrawer();
@@ -170,13 +168,13 @@ class _MyHomePageState extends State<MyHomePage> {
                       keyboardType: TextInputType.url,
                       onChanged: (value) {
                         setState(() {
-                          _controller.restart(
+                          _controller.hardReset(
                             inputs: [
                               FlutterCaptchaInput.provider(NetworkImage(value))
                             ],
                           );
                         });
-                        _controller.restart();
+                        _controller.hardReset();
                       },
                     ),
                   ),
@@ -200,7 +198,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   FilledButton(
                     onPressed: () async {
                       final sc = Scaffold.of(context);
-                      await _controller.restart();
+                      _controller.softReset();
                       sc.closeDrawer();
                     },
                     child: const Text('Restart'),
@@ -212,7 +210,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   FilledButton(
                     onPressed: () async {
                       final sc = Scaffold.of(context);
-                      _controller.requestNextInput();
+                      _controller.showNextInput();
                       sc.closeDrawer();
                     },
                     child: const Text('Next'),
@@ -231,10 +229,9 @@ class _MyHomePageState extends State<MyHomePage> {
         canMove: _canMove,
         canRotate: _canRotate,
         controller: _controller,
-        size: width,
-        splitMultiplier: _splitSize,
-        whenMovingBuilder: (_, child, __) =>
-            Opacity(opacity: 0.5, child: child),
+        dimension: width,
+        size: _size,
+        draggingBuilder: (_, child, __) => Opacity(opacity: 0.5, child: child),
       ),
       floatingActionButton: Row(
         mainAxisSize: MainAxisSize.min,
@@ -251,7 +248,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _onCheck(BuildContext context) async {
-    final sc = Scaffold.of(context);
+    final scaffold = Scaffold.of(context);
     if (_controller.checkSolution()) {
       showDialog(
           context: context,
@@ -267,7 +264,7 @@ class _MyHomePageState extends State<MyHomePage> {
               ],
             );
           });
-      sc.closeDrawer();
+      scaffold.closeDrawer();
       return;
     }
 
@@ -286,7 +283,7 @@ class _MyHomePageState extends State<MyHomePage> {
           );
         });
 
-    sc.closeDrawer();
-    await _controller.requestNextInput();
+    scaffold.closeDrawer();
+    await _controller.showNextInput();
   }
 }
