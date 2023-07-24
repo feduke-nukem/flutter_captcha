@@ -458,7 +458,7 @@ void main() {
 
       final resetParts = controller.currentParts;
 
-      expect(identical(prevParts, resetParts), isTrue);
+      expect(identical(prevParts, resetParts), isFalse);
       expect(
         identical(prevControllers, controller.partControllersMap.values),
         isFalse,
