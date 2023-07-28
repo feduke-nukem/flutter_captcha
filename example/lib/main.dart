@@ -175,7 +175,7 @@ class _MyHomePageState extends State<MyHomePage> {
         partsBuilder: (context, part, solved) {
           return AnimatedContainer(
             duration: const Duration(milliseconds: 600),
-            color: (solved ? Colors.green : Colors.red).withOpacity(0.5),
+            color: solved ? Colors.green : Colors.red,
             child: part,
           );
         },
