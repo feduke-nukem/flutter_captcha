@@ -1,46 +1,7 @@
-import 'package:flutter/services.dart';
 import 'package:flutter_captcha/flutter_captcha.dart';
 import 'package:flutter/material.dart';
 
-enum _Assets {
-  fedor('assets/fedor.jpg'),
-  shrek('assets/shrek.jpeg'),
-  flutterDash('assets/flutter-dash.png'),
-  shrek2('assets/shrek2.webp');
-
-  final String path;
-  const _Assets(this.path);
-}
-
-final _inputs = [
-  const FlutterCaptchaInput.provider(
-    NetworkImage(
-      'https://images.immediate.co.uk/production/volatile/sites/3/2022/09/Edgerunners-connect-to-Cyberpunk-2077-timeline-b233bcb.jpg?quality=90&resize=980,654',
-    ),
-  ),
-  const FlutterCaptchaInput.provider(
-    NetworkImage(
-        'https://cdn.vox-cdn.com/thumbor/3HEIMF3j_RDJXedWcXW2xCLESEQ=/1400x1400/filters:format(jpeg)/cdn.vox-cdn.com/uploads/chorus_asset/file/24016181/Cyberpunk_Edgerunners_Season1_Episode3_00_11_24_03.jpg'),
-  ),
-  const FlutterCaptchaInput.provider(
-    NetworkImage(
-      'https://images.pushsquare.com/b0d35b53cd1e4/cyberpunk-edgerunners-anime-review.large.jpg',
-    ),
-  ),
-  FlutterCaptchaInput.widget(
-    Container(
-      alignment: Alignment.center,
-      child: const Icon(
-        Icons.person,
-        size: 400,
-      ),
-    ),
-  ),
-  ..._Assets.values.map((e) => FlutterCaptchaInput.asset(e.path))
-];
 void main() {
-  WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   runApp(const MyApp());
 }
 
@@ -68,15 +29,16 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  final _controller = FlutterCaptchaController(inputs: _inputs);
-  int _size = 3;
+  final _key = GlobalKey<FlutterCaptchaState>();
+  int _splitSize = 3;
   bool _canMove = true;
   bool _canRotate = true;
+  bool _crossLined = true;
+  double _crossLineWidth = 10.0;
   final _textEditingController = TextEditingController();
 
   @override
   void dispose() {
-    _controller.dispose();
     _textEditingController.dispose();
     super.dispose();
   }
@@ -93,6 +55,18 @@ class _MyHomePageState extends State<MyHomePage> {
             child: SingleChildScrollView(
               child: Column(
                 children: [
+                  const Text(
+                    'Cross lined',
+                    style: TextStyle(fontSize: 20),
+                  ),
+                  Switch(
+                    value: _crossLined,
+                    onChanged: (value) {
+                      setState(() {
+                        _crossLined = value;
+                      });
+                    },
+                  ),
                   const Text(
                     'Can move',
                     style: TextStyle(fontSize: 20),
@@ -118,74 +92,32 @@ class _MyHomePageState extends State<MyHomePage> {
                     },
                   ),
                   Text(
-                    'Split size: $_size',
+                    'Split size: $_splitSize',
                     style: const TextStyle(fontSize: 20),
                   ),
                   Slider(
-                    value: _size.toDouble(),
+                    value: _splitSize.toDouble(),
                     min: 2,
                     max: 15,
                     onChanged: (value) {
                       setState(() {
-                        _size = value.toInt();
+                        _splitSize = value.toInt();
                       });
                     },
                   ),
-                  const Text(
-                    'Specify url for custom input',
-                    style: TextStyle(fontSize: 20),
+                  Text(
+                    'Cross line width: ${_crossLineWidth.toStringAsFixed(1)}',
+                    style: const TextStyle(fontSize: 20),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                    child: TextField(
-                      decoration: InputDecoration(
-                        labelText: 'URL',
-                        suffixIcon: FilledButton(
-                          style: FilledButton.styleFrom(
-                            shape: const CircleBorder(),
-                          ),
-                          child: const Icon(Icons.check),
-                          onPressed: () {
-                            final url =
-                                Uri.tryParse(_textEditingController.text);
-
-                            if (url == null) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Invalid url'),
-                                ),
-                              );
-                            } else {
-                              setState(() {
-                                _controller.hardReset(
-                                  inputs: [
-                                    FlutterCaptchaInput.provider(
-                                      NetworkImage(
-                                        url.toString(),
-                                      ),
-                                    ),
-                                  ],
-                                );
-                              });
-                              _controller.hardReset();
-                            }
-
-                            Scaffold.of(context).closeDrawer();
-                          },
-                        ),
-                      ),
-                      keyboardType: TextInputType.url,
-                      onChanged: (value) {
-                        setState(() {
-                          _controller.hardReset(
-                            inputs: [
-                              FlutterCaptchaInput.provider(NetworkImage(value))
-                            ],
-                          );
-                        });
-                        _controller.hardReset();
-                      },
-                    ),
+                  Slider(
+                    value: _crossLineWidth,
+                    min: 1.0,
+                    max: 20,
+                    onChanged: (value) {
+                      setState(() {
+                        _crossLineWidth = value;
+                      });
+                    },
                   ),
                   const SizedBox(
                     height: 20,
@@ -207,22 +139,22 @@ class _MyHomePageState extends State<MyHomePage> {
                   FilledButton(
                     onPressed: () async {
                       final sc = Scaffold.of(context);
-                      _controller.hardReset();
+                      _key.currentState!.reset();
                       sc.closeDrawer();
                     },
                     child: const Text('Restart'),
                   ),
                   const Text(
-                    'Next captcha',
+                    'Solve',
                     style: TextStyle(fontSize: 20),
                   ),
                   FilledButton(
                     onPressed: () async {
                       final sc = Scaffold.of(context);
-                      _controller.showNextInput();
+                      _key.currentState!.solve();
                       sc.closeDrawer();
                     },
-                    child: const Text('Next'),
+                    child: const Text('Solve'),
                   ),
                 ],
               ),
@@ -235,12 +167,23 @@ class _MyHomePageState extends State<MyHomePage> {
         title: const Text('Captcha'),
       ),
       body: FlutterCaptcha(
+        key: _key,
+        crossLine:
+            _crossLined ? (color: Colors.white, width: _crossLineWidth) : null,
+        fit: BoxFit.cover,
         canMove: _canMove,
+        partsBuilder: (context, part, solved) {
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 600),
+            color: (solved ? Colors.green : Colors.red).withOpacity(0.5),
+            child: part,
+          );
+        },
         canRotate: _canRotate,
-        controller: _controller,
         dimension: width,
-        size: _size,
+        splitSize: _splitSize,
         draggingBuilder: (_, child, __) => Opacity(opacity: 0.5, child: child),
+        child: Image.asset('assets/flutter-dash.png'),
       ),
       floatingActionButton: Row(
         mainAxisSize: MainAxisSize.min,
@@ -258,7 +201,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> _onCheck(BuildContext context) async {
     final scaffold = Scaffold.of(context);
-    if (_controller.checkSolution()) {
+    if (_key.currentState!.checkSolution()) {
       showDialog(
           context: context,
           builder: (context) {
@@ -293,6 +236,5 @@ class _MyHomePageState extends State<MyHomePage> {
         });
 
     scaffold.closeDrawer();
-    await _controller.showNextInput();
   }
 }

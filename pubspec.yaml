@@ -9,11 +9,9 @@ environment:
 
 dependencies:
   flutter:
-    sdk: flutter
-  image: ^4.0.17
+    sdk: flutter 
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^2.0.0
-  transparent_image: ^2.0.1 
+  flutter_lints: ^2.0.0 

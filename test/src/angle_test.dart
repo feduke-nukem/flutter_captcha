@@ -8,10 +8,10 @@ void main() {
     });
 
     test('Angle.isSolved', () {
-      expect(Angle.zero().isSolved, true);
-      expect(Angle.quarter().isSolved, false);
-      expect(Angle.third().isSolved, false);
-      expect(Angle.half().isSolved, false);
+      expect(Angle.zero().isZero, true);
+      expect(Angle.quarter().isZero, false);
+      expect(Angle.third().isZero, false);
+      expect(Angle.half().isZero, false);
     });
 
     test('Angle.hashCode', () {
@@ -30,11 +30,6 @@ void main() {
 
     test('sum two quarters => equals Angle.half', () {
       expect(Angle.quarter() + Angle.quarter(), equals(Angle.half()));
-    });
-
-    test('multiply two quarters => equals Angle.half', () {
-      expect((Angle.half() * 4).value, equals(2));
-      expect((Angle.half() * 4).absoluteValue, equals(0));
     });
   });
 }

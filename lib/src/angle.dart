@@ -1,15 +1,14 @@
-const _initial = 0.0;
+const _zero = 0.0;
 const _quarter = 1 / 4;
 const _half = 2 / 4;
 const _third = 3 / 4;
-const _solutionValue = _initial;
 
 /// Represents an angle.
 final class Angle {
   const Angle._(this.value);
 
   /// 0 degrees.
-  factory Angle.zero() => const Angle._(_initial);
+  factory Angle.zero() => const Angle._(_zero);
 
   /// 90 degrees.
   factory Angle.quarter() => const Angle._(_quarter);
@@ -36,12 +35,10 @@ final class Angle {
   /// For example, if the angle is 1.25, the absolute value is 0.25.
   double get absoluteValue => value % 1;
 
-  /// Whether the angle is solved.
-  bool get isSolved =>
-      value == _solutionValue || absoluteValue == _solutionValue;
+  /// Whether the angle is zero.
+  bool get isZero => value == _zero || absoluteValue == _zero;
 
   Angle operator +(Angle other) => Angle._(value + other.value);
-  Angle operator *(double other) => Angle._(value * other);
 
   @override
   bool operator ==(Object other) =>

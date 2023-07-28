@@ -1,13 +1,16 @@
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_captcha/src/angle.dart';
-import 'dart:math' as math;
+part of 'flutter_captcha.dart';
 
-/// {@template flutter_captcha_part.flutter_captcha_parts}
-/// Each [CaptchaPartPosition] is mapped to a [Uint8List] representing the
-/// image part in bytes.
-/// {@endtemplate}
-typedef CaptchaParts = Map<CaptchaPartPosition, Uint8List>;
+/// Part position in the captcha.
+typedef CaptchaPartPosition = ({
+  double x,
+  double y,
+});
+typedef CaptchaLayout = ({
+  double dimension,
+  double size,
+});
+
+typedef CaptchaPartPositions = List<CaptchaPartPosition>;
 
 /// {@template flutter_captcha_part.builder}
 /// A builder for the captcha parts.
@@ -15,51 +18,18 @@ typedef CaptchaParts = Map<CaptchaPartPosition, Uint8List>;
 typedef FlutterCaptchaPartBuilder = Widget Function(
   BuildContext context,
   Widget part,
-  bool isSolved,
+  bool solved,
 );
-
-/// Simple class to represent a position in the captcha.
-class CaptchaPartPosition {
-  /// Horizontal position.
-  final double x;
-
-  /// Vertical position.
-  final double y;
-
-  /// @nodoc
-  const CaptchaPartPosition(this.x, this.y);
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is CaptchaPartPosition &&
-          runtimeType == other.runtimeType &&
-          x == other.x &&
-          y == other.y;
-
-  @override
-  int get hashCode => x.hashCode ^ y.hashCode;
-}
 
 /// {@template flutter_captcha_part}
 /// A part of the captcha.
 /// {@endtemplate}
 class FlutterCaptchaPart extends StatefulWidget {
-  /// {@template flutter_captcha_part.dimension}
-  /// * See also [SizedBox.square].
-  /// {@endtemplate}
-  final double dimension;
-
   /// Desired widget to be used.
   final Widget child;
 
-  /// Callback for when the solution of the captcha changes.
-  final ValueChanged<bool>? onSolutionChanged;
-
   /// {@macro flutter_captcha_part.controller}
   final FlutterCaptchaPartController controller;
-
-  final double size;
 
   /// Builder for the part of the captcha.
   final FlutterCaptchaPartBuilder? builder;
@@ -110,20 +80,23 @@ class FlutterCaptchaPart extends StatefulWidget {
   /// {@endtemplate}
   final Duration rotateDuration;
 
+  final BoxFit? fit;
+
+  final FlutterCaptchaCrossLine? crossLine;
+
   /// @nodoc
   const FlutterCaptchaPart({
     required this.moveCurve,
     required this.rotateCurve,
-    required this.dimension,
     required this.child,
     required this.controller,
-    required this.size,
     required this.canRotate,
     required this.canMove,
     required this.moveDuration,
     required this.rotateDuration,
-    this.onSolutionChanged,
+    this.crossLine,
     this.draggingBuilder,
+    this.fit,
     this.feedbackBuilder,
     this.builder,
     super.key,
@@ -154,20 +127,36 @@ class _FlutterCaptchaPartState extends State<FlutterCaptchaPart> {
 
   @override
   Widget build(BuildContext context) {
+    var child = widget.builder?.call(
+          context,
+          widget.child,
+          widget.controller.solved,
+        ) ??
+        widget.child;
+
+    child = _Part(
+      dimension: widget.controller._layout.dimension,
+      size: widget.controller._layout.size,
+      solutionPosition: widget.controller._solutionPosition,
+      child: SizedBox.square(
+        dimension: widget.controller._layout.size,
+        child: widget.fit == null
+            ? child
+            : FittedBox(
+                fit: widget.fit!,
+                child: child,
+              ),
+      ),
+    );
+
     var result = widget.canMove
         ? DragTarget<FlutterCaptchaPartController>(
             onWillAccept: (data) => widget.controller._canMove(data!._position),
             onAcceptWithDetails: (details) =>
                 widget.controller.maybeSwapPositions(details.data),
-            builder: (context, _, __) =>
-                widget.builder?.call(
-                  context,
-                  widget.child,
-                  widget.controller.isSolved,
-                ) ??
-                widget.child,
+            builder: (context, _, __) => child,
           )
-        : widget.child;
+        : child;
 
     if (widget.canRotate) {
       result = GestureDetector(
@@ -183,6 +172,16 @@ class _FlutterCaptchaPartState extends State<FlutterCaptchaPart> {
     }
 
     if (widget.canMove) {
+      final rotated = Transform.rotate(
+        angle: widget.controller.angle.absoluteValue * (2 * math.pi),
+        child: child,
+      );
+      final feedback = widget.feedbackBuilder?.call(
+            context,
+            rotated,
+            widget.controller.solved,
+          ) ??
+          rotated;
       result = AbsorbPointer(
         absorbing: _isDragging,
         child: Draggable(
@@ -190,28 +189,28 @@ class _FlutterCaptchaPartState extends State<FlutterCaptchaPart> {
           onDragStarted: () => setState(() => _isDragging = true),
           data: widget.controller,
           childWhenDragging: widget.draggingBuilder?.call(
-                  context,
-                  Transform.rotate(
-                    angle:
-                        widget.controller.angle.absoluteValue * (2 * math.pi),
-                    child: widget.child,
+                context,
+                rotated,
+                widget.controller.solved,
+              ) ??
+              rotated,
+          feedback: widget.crossLine != null
+              ? ClipRect(
+                  clipper: _FeedbackClipper(
+                    crossLine: widget.crossLine!,
+                    layout: widget.controller._layout,
+                    position: widget.controller.position,
                   ),
-                  widget.controller.isSolved) ??
-              SizedBox.square(
-                dimension: widget.size,
-              ),
-          feedback: _FeedbackPart(
-            builder: widget.feedbackBuilder,
-            controller: widget.controller,
-            child: widget.child,
-          ),
+                  child: feedback,
+                )
+              : feedback,
           child: result,
         ),
       );
     }
 
     return AnimatedPositioned(
-      onEnd: () => widget.controller.isBusy = false,
+      onEnd: () => widget.controller._isBusy = false,
       curve: widget.moveCurve,
       top: widget.controller.position.y,
       left: widget.controller.position.x,
@@ -221,33 +220,7 @@ class _FlutterCaptchaPartState extends State<FlutterCaptchaPart> {
   }
 
   void _rotate() {
-    widget.controller.turn();
-    widget.onSolutionChanged?.call(widget.controller.isSolved);
-  }
-}
-
-class _FeedbackPart extends StatelessWidget {
-  final FlutterCaptchaPartController controller;
-  final FlutterCaptchaPartBuilder? builder;
-  final Widget child;
-
-  const _FeedbackPart({
-    required this.controller,
-    required this.child,
-    this.builder,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Transform.rotate(
-      angle: (controller.angle * 2 * math.pi).value,
-      child: builder?.call(
-            context,
-            child,
-            controller.isSolved,
-          ) ??
-          child,
-    );
+    widget.controller.angle += Angle.quarter();
   }
 }
 
@@ -259,38 +232,43 @@ class FlutterCaptchaPartController extends ChangeNotifier {
     required CaptchaPartPosition startPosition,
     required CaptchaPartPosition solutionPosition,
     required Angle angle,
-    required this.imageBytes,
+    required CaptchaLayout layout,
   })  : _position = startPosition,
         _solutionPosition = solutionPosition,
-        _angle = angle;
+        _angle = angle,
+        _layout = layout;
 
-  final CaptchaPartPosition _solutionPosition;
-  final Uint8List imageBytes;
+  CaptchaPartPosition _solutionPosition;
+  CaptchaLayout _layout;
 
-  /// true if align animation is playing
-  /// to prevent unwanted collisions
-  bool isBusy = false;
+  /// True if align animation is playing to prevent unwanted collisions.
+  bool _isBusy = false;
 
   CaptchaPartPosition _position;
   CaptchaPartPosition get position => _position;
   set position(CaptchaPartPosition position) {
     if (!_canMove(position)) return;
 
-    isBusy = true;
+    _isBusy = true;
     _position = position;
     notifyListeners();
   }
 
   Angle _angle;
   Angle get angle => _angle;
+  set angle(Angle angle) {
+    if (angle == _angle) return;
+    _angle = angle;
+    notifyListeners();
+  }
 
   /// Whether the part is in its solution position.
-  bool get isSolved => _angle.isSolved && _position == _solutionPosition;
+  bool get solved => _angle.isZero && _position == _solutionPosition;
 
   /// A part can move to a position if it is not busy and the position is not
   /// the current position.
   void maybeSwapPositions(FlutterCaptchaPartController other) {
-    if (isBusy || other.isBusy) return;
+    if (_isBusy || other._isBusy) return;
 
     final changeableNewPosition = other.position;
     other.position = position;
@@ -299,11 +277,154 @@ class FlutterCaptchaPartController extends ChangeNotifier {
     if (changeableNewPosition != other.position) {}
   }
 
-  /// Rotate the part by 90 degrees.
-  void turn() {
-    _angle = _angle + Angle.quarter();
+  bool _canMove(CaptchaPartPosition position) => position != _position;
+
+  void _update({
+    required CaptchaPartPosition position,
+    required CaptchaPartPosition solutionPosition,
+    required Angle angle,
+    required CaptchaLayout layout,
+  }) {
+    _position = position;
+    _angle = angle;
+    _solutionPosition = solutionPosition;
+    _layout = layout;
     notifyListeners();
   }
 
-  bool _canMove(CaptchaPartPosition alignment) => alignment != _position;
+  void _solve() {
+    _position = _solutionPosition;
+    _angle = Angle.zero();
+    notifyListeners();
+  }
+}
+
+class _Part extends SingleChildRenderObjectWidget {
+  final double dimension;
+  final double size;
+  final CaptchaPartPosition solutionPosition;
+
+  const _Part({
+    required this.dimension,
+    required this.size,
+    required this.solutionPosition,
+    required super.child,
+  });
+
+  @override
+  _RenderPart createRenderObject(BuildContext context) => _RenderPart(
+        dimension: dimension,
+        partSize: size,
+        position: solutionPosition,
+      );
+
+  @override
+  void updateRenderObject(BuildContext context, _RenderPart renderObject) {
+    renderObject
+      ..dimension = dimension
+      ..partSize = size
+      ..solutionPosition = solutionPosition;
+  }
+}
+
+class _RenderPart extends RenderProxyBox {
+  double _dimension;
+  set dimension(double value) {
+    if (_dimension == value) return;
+
+    _dimension = value;
+    markNeedsLayout();
+  }
+
+  double _partSize;
+  set partSize(double value) {
+    if (_partSize == value) return;
+
+    _partSize = value;
+    markNeedsLayout();
+  }
+
+  CaptchaPartPosition _solutionPosition;
+  set solutionPosition(CaptchaPartPosition value) {
+    if (_solutionPosition == value) return;
+
+    _solutionPosition = value;
+    markNeedsLayout();
+  }
+
+  _RenderPart({
+    required double dimension,
+    required double partSize,
+    required CaptchaPartPosition position,
+  })  : _solutionPosition = position,
+        _dimension = dimension,
+        _partSize = partSize;
+
+  @override
+  void performLayout() {
+    super.performLayout();
+
+    child!.layout(
+      BoxConstraints.tightFor(
+        width: _dimension,
+        height: _dimension,
+      ),
+      parentUsesSize: true,
+    );
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    layer = context.pushClipRect(
+      needsCompositing,
+      offset,
+      Rect.fromLTWH(0, 0, _partSize, _partSize),
+      (context, offset) {
+        context.canvas.translate(-_solutionPosition.x, -_solutionPosition.y);
+        super.paint(context, offset);
+      },
+      oldLayer: layer as ClipRectLayer?,
+    );
+  }
+}
+
+class _FeedbackClipper extends CustomClipper<Rect> {
+  final FlutterCaptchaCrossLine crossLine;
+  final CaptchaPartPosition position;
+  final CaptchaLayout layout;
+
+  const _FeedbackClipper({
+    required this.crossLine,
+    required this.position,
+    required this.layout,
+  });
+
+  @override
+  Rect getClip(Size size) {
+    final isPositiveX = position.x > 0;
+    final isPositiveY = position.y > 0;
+    final isAtBoundaryX =
+        isPositiveX && position.x != layout.dimension - layout.size;
+    final isAtBoundaryY =
+        isPositiveY && position.y != layout.dimension - layout.size;
+    final clipValue = crossLine.width / 2;
+
+    final top = isPositiveY ? clipValue : 0.0;
+    final left = isPositiveX ? clipValue : 0.0;
+    final bottom = isAtBoundaryY || position.y == 0 ? clipValue : 0.0;
+    final right = isAtBoundaryX || position.x == 0 ? clipValue : 0.0;
+
+    return Rect.fromLTRB(
+      left,
+      top,
+      layout.size - right,
+      layout.size - bottom,
+    );
+  }
+
+  @override
+  bool shouldReclip(_FeedbackClipper oldClipper) =>
+      oldClipper.crossLine != crossLine ||
+      oldClipper.position != position ||
+      oldClipper.layout != layout;
 }
