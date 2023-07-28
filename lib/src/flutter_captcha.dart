@@ -364,11 +364,8 @@ class _CrossLinePainter extends CustomPainter {
 
     for (var i = 1; i < count; i++) {
       final y = i * cellHeight;
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
-    }
-
-    for (var i = 1; i < count; i++) {
       final x = i * cellWidth;
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
       canvas.drawLine(Offset(x, 0.0), Offset(x, size.height), paint);
     }
   }
