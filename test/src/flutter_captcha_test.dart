@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_captcha/src/angle.dart';
 import 'package:flutter_captcha/src/flutter_captcha.dart';
@@ -327,6 +328,34 @@ void main() {
       );
 
       expect(key.currentState!.checkSolution(), isTrue);
+    });
+    testWidgets('init 3 split size => positions correct', (widgetTester) async {
+      await widgetTester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FlutterCaptcha(
+              key: key,
+              dimension: 300.0,
+              splitSize: 3,
+              child: widget,
+            ),
+          ),
+        ),
+      );
+      final positions = [
+        (x: 0.0, y: 0.0),
+        (x: 100.0, y: 0.0),
+        (x: 200.0, y: 0.0),
+        (x: 0.0, y: 100.0),
+        (x: 100.0, y: 100.0),
+        (x: 200.0, y: 100.0),
+        (x: 0.0, y: 200.0),
+        (x: 100.0, y: 200.0),
+        (x: 200.0, y: 200.0),
+      ];
+      await widgetTester.pumpAndSettle();
+
+      expect(listEquals(positions, key.currentState!.currentPositions), isTrue);
     });
   });
 }
