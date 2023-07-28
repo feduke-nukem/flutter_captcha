@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
@@ -312,21 +314,17 @@ final class FlutterCaptchaState extends State<FlutterCaptcha> {
     required double dimension,
     required double partSize,
   }) {
-    var x = 0.0, y = 0.0;
     final width = partSize, height = partSize;
+    final splitSize = widget.splitSize;
+    final partsCount = splitSize * splitSize;
 
     final output = <CaptchaPartPosition>[];
 
-    for (var i = 0; i < widget.splitSize; i++) {
-      for (var j = 0; j < widget.splitSize; j++) {
-        output.add(
-          (x: x, y: y),
-        );
+    for (var i = 0; i < partsCount; i++) {
+      final x = (i % splitSize) * width;
+      final y = (i ~/ splitSize) * height;
 
-        x += width;
-      }
-      x = 0;
-      y += height;
+      output.add((x: x, y: y));
     }
 
     return output;
