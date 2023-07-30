@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter/scheduler.dart';
 import 'dart:math' as math;
 import 'angle.dart';
 
@@ -20,13 +19,13 @@ typedef FlutterCaptchaCrossLine = ({
 final class FlutterCaptcha extends StatefulWidget {
   final Widget child;
 
-  /// Captcha will be split into [splitSize]x[splitSize] parts.
+  /// The width and height of widget.
   ///
-  /// For example, if size is 2, the captcha will contain 4 parts.
-  final int splitSize;
-
-  /// {@macro flutter_captcha_part.dimension}
-  final double dimension;
+  /// See also [SizedBox.square]
+  ///
+  /// If it's `null` the [BoxConstraints.biggest] and [Size.shortestSide] will
+  /// be used instead within [LayoutBuilder]
+  final double? dimension;
 
   /// Builder for the parts of the captcha.
   final FlutterCaptchaPartBuilder? partsBuilder;
@@ -36,12 +35,6 @@ final class FlutterCaptcha extends StatefulWidget {
 
   /// {@macro flutter_captcha_part.feedbackBuilder}
   final FlutterCaptchaPartBuilder? feedbackBuilder;
-
-  /// {@macro flutter_flutter_captcha_part.canRotate}
-  final bool canRotate;
-
-  /// {@macro flutter_captcha_part.canMove}
-  final bool canMove;
 
   /// {@macro flutter_captcha_part.moveCurve}
   final Curve moveCurve;
@@ -60,39 +53,37 @@ final class FlutterCaptcha extends StatefulWidget {
   /// The cross line that will be drawn over the captcha.
   final FlutterCaptchaCrossLine? crossLine;
 
+  final FlutterCaptchaController controller;
+
   const FlutterCaptcha({
     required this.child,
-    required this.dimension,
+    required this.controller,
     this.moveCurve = Curves.fastOutSlowIn,
     this.rotateCurve = Curves.fastOutSlowIn,
     this.moveDuration = const Duration(milliseconds: 400),
     this.rotateDuration = const Duration(milliseconds: 250),
-    this.splitSize = 2,
-    this.canRotate = true,
-    this.canMove = true,
     this.fit,
     this.partsBuilder,
     this.draggingBuilder,
     this.feedbackBuilder,
     this.crossLine = (color: Colors.white, width: 10.0),
+    this.dimension,
     super.key,
-  })  : assert(splitSize > 1, 'splitSize must be greater than 1'),
-        assert(dimension > 0, 'dimension must be greater than 0');
+  });
 
   FlutterCaptcha.image({
     required ImageProvider image,
-    required this.dimension,
+    required this.controller,
     this.moveCurve = Curves.fastOutSlowIn,
     this.rotateCurve = Curves.fastOutSlowIn,
     this.moveDuration = const Duration(milliseconds: 400),
     this.rotateDuration = const Duration(milliseconds: 250),
-    this.splitSize = 2,
-    this.canRotate = true,
-    this.canMove = true,
+    this.crossLine = (color: Colors.white, width: 10.0),
     this.partsBuilder,
     this.draggingBuilder,
     this.feedbackBuilder,
     this.fit,
+    this.dimension,
     ImageFrameBuilder? frameBuilder,
     ImageLoadingBuilder? loadingBuilder,
     ImageErrorWidgetBuilder? errorBuilder,
@@ -111,7 +102,6 @@ final class FlutterCaptcha extends StatefulWidget {
     bool gaplessPlayback = false,
     bool isAntiAlias = false,
     FilterQuality filterQuality = FilterQuality.low,
-    this.crossLine = (color: Colors.white, width: 10.0),
     super.key,
   }) : child = Image(
           image: image,
@@ -136,11 +126,121 @@ final class FlutterCaptcha extends StatefulWidget {
         );
 
   @override
-  State<FlutterCaptcha> createState() => FlutterCaptchaState();
+  State<FlutterCaptcha> createState() => _FlutterCaptchaState();
 }
 
-final class FlutterCaptchaState extends State<FlutterCaptcha> {
-  final _random = math.Random();
+final class _FlutterCaptchaState extends State<FlutterCaptcha> {
+  @override
+  void initState() {
+    super.initState();
+
+    widget.controller.addListener(_rebuild);
+  }
+
+  @override
+  void didUpdateWidget(covariant FlutterCaptcha oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_rebuild);
+      widget.controller.addListener(_rebuild);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return RepaintBoundary(
+      child: LayoutBuilder(
+        builder: (_, constraints) {
+          final dimension =
+              widget.dimension ?? constraints.biggest.shortestSide;
+          final partSize = dimension / widget.controller.splitSize;
+
+          return SizedBox.square(
+            dimension: dimension,
+            child: Stack(
+              children: [
+                for (final controller in widget.controller.controllers)
+                  FlutterCaptchaPart(
+                    key: ObjectKey(controller),
+                    layout: (dimension: dimension, size: partSize),
+                    canMove: widget.controller.randomizePositions,
+                    canRotate: widget.controller.randomizeAngles,
+                    builder: widget.partsBuilder,
+                    controller: controller,
+                    draggingBuilder: widget.draggingBuilder,
+                    feedbackBuilder: widget.feedbackBuilder,
+                    moveCurve: widget.moveCurve,
+                    rotateCurve: widget.rotateCurve,
+                    moveDuration: widget.moveDuration,
+                    rotateDuration: widget.rotateDuration,
+                    fit: widget.fit,
+                    crossLine: widget.crossLine,
+                    child: widget.child,
+                  ),
+                if (widget.crossLine != null)
+                  IgnorePointer(
+                    child: CustomPaint(
+                      size: Size.square(constraints.biggest.shortestSide),
+                      painter: _CrossLinePainter(
+                        crossLine: widget.crossLine!,
+                        count: widget.controller.splitSize,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _rebuild() => setState(() {});
+}
+
+/// Controller for [FlutterCaptcha]
+final class FlutterCaptchaController extends ChangeNotifier {
+  final math.Random _random;
+
+  int _splitSize;
+
+  /// Captcha will be split into [splitSize]x[splitSize] parts.
+  ///
+  /// For example, if size is 2, the captcha will contain 4 parts.
+  int get splitSize => _splitSize;
+  set splitSize(int value) {
+    if (_splitSize == value) return;
+
+    _splitSize = value;
+    _init();
+  }
+
+  bool _randomizeAngles;
+
+  /// Whether the angles will be randomized.
+  ///
+  /// If `true` - captcha parts can be rotated.
+  bool get randomizeAngles => _randomizeAngles;
+  set randomizeAngles(bool value) {
+    if (_randomizeAngles == value) return;
+
+    _randomizeAngles = value;
+    reset();
+  }
+
+  bool _randomizePositions;
+
+  /// Whether the positions will be randomized.
+  ///
+  /// If `true` - captcha parts can be moved.
+  bool get randomizePositions => _randomizePositions;
+  set randomizePositions(bool value) {
+    if (_randomizePositions == value) return;
+
+    _randomizePositions = value;
+    reset();
+  }
 
   @visibleForTesting
   final controllers = <FlutterCaptchaPartController>[];
@@ -148,80 +248,16 @@ final class FlutterCaptchaState extends State<FlutterCaptcha> {
   @visibleForTesting
   CaptchaPartPositions? currentPositions;
 
-  @override
-  void initState() {
-    super.initState();
-
-    SchedulerBinding.instance.addPostFrameCallback(
-      (_) => _init(),
-    );
-  }
-
-  @override
-  void didUpdateWidget(FlutterCaptcha oldWidget) {
-    super.didUpdateWidget(oldWidget);
-
-    if (oldWidget.splitSize != widget.splitSize ||
-        oldWidget.dimension != widget.dimension) {
-      SchedulerBinding.instance.addPostFrameCallback(
-        (_) => _init(),
-      );
-
-      return;
-    }
-
-    if (oldWidget.canMove != widget.canMove ||
-        oldWidget.canRotate != widget.canRotate) {
-      SchedulerBinding.instance.addPostFrameCallback(
-        (_) => reset(),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return RepaintBoundary(
-      child: SizedBox.square(
-        dimension: widget.dimension,
-        child: Stack(
-          children: [
-            for (final controller in controllers)
-              FlutterCaptchaPart(
-                key: ObjectKey(controller),
-                canMove: widget.canMove,
-                canRotate: widget.canRotate,
-                builder: widget.partsBuilder,
-                controller: controller,
-                draggingBuilder: widget.draggingBuilder,
-                feedbackBuilder: widget.feedbackBuilder,
-                moveCurve: widget.moveCurve,
-                rotateCurve: widget.rotateCurve,
-                moveDuration: widget.moveDuration,
-                rotateDuration: widget.rotateDuration,
-                fit: widget.fit,
-                crossLine: widget.crossLine,
-                child: widget.child,
-              ),
-            if (widget.crossLine != null)
-              IgnorePointer(
-                child: LayoutBuilder(
-                  builder: (_, constraints) {
-                    return CustomPaint(
-                      size: Size.square(constraints.biggest.shortestSide),
-                      painter: _CrossLinePainter(
-                        width: widget.crossLine!.width,
-                        count: widget.splitSize,
-                        color: widget.crossLine!.color,
-                      ),
-                    );
-                  },
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
+  FlutterCaptchaController({
+    int splitSize = 2,
+    bool randomizeAngles = true,
+    bool randomizePositions = true,
+    math.Random? random,
+  })  : assert(splitSize > 1, 'splitSize must be greater than 1'),
+        _splitSize = splitSize,
+        _randomizeAngles = randomizeAngles,
+        _randomizePositions = randomizePositions,
+        _random = random ?? math.Random();
 
   @override
   void dispose() {
@@ -230,6 +266,8 @@ final class FlutterCaptchaState extends State<FlutterCaptcha> {
     currentPositions = null;
     super.dispose();
   }
+
+  void init() => _init();
 
   /// Whether the captcha is solved.
   bool checkSolution() =>
@@ -248,34 +286,19 @@ final class FlutterCaptchaState extends State<FlutterCaptcha> {
   }
 
   void _init({CaptchaPartPositions? positions}) {
-    final dimension = math.min(widget.dimension, context.size!.shortestSide);
-    final partSize = dimension / widget.splitSize;
+    final newPositions = currentPositions = positions ?? _createPositions();
 
-    final newPositions = currentPositions = positions ??
-        _createPositions(
-          dimension: dimension,
-          partSize: partSize,
-        );
+    _setupControllers(newPositions);
 
-    _setupControllers(
-      positions: newPositions,
-      dimension: dimension,
-      partSize: partSize,
-    );
-
-    setState(() {});
+    notifyListeners();
   }
 
-  void _setupControllers({
-    required CaptchaPartPositions positions,
-    required double dimension,
-    required double partSize,
-  }) {
+  void _setupControllers(CaptchaPartPositions positions) {
     final solutionPositions = positions.toList(growable: false);
     final startPositions = positions.toList(growable: false);
     final angles = Angle.all();
 
-    if (widget.canMove) startPositions.shuffle(_random);
+    if (_randomizePositions) startPositions.shuffle(_random);
 
     assert(startPositions.length == solutionPositions.length);
 
@@ -287,40 +310,32 @@ final class FlutterCaptchaState extends State<FlutterCaptcha> {
       final solutionPosition = solutionPositions[i];
 
       final angle =
-          widget.canRotate ? _createRandomAngle(angles) : Angle.zero();
-      final layout = (dimension: dimension, size: partSize);
+          _randomizeAngles ? _createRandomAngle(angles) : Angle.zero();
 
       canUpdateControllers
           ? controllers[i]._update(
               position: startPosition,
               solutionPosition: solutionPosition,
               angle: angle,
-              layout: layout,
             )
           : controllers.add(
               FlutterCaptchaPartController(
                 angle: angle,
                 startPosition: startPosition,
                 solutionPosition: solutionPosition,
-                layout: layout,
               ),
             );
     }
   }
 
-  CaptchaPartPositions _createPositions({
-    required double dimension,
-    required double partSize,
-  }) {
-    final width = partSize, height = partSize;
-    final splitSize = widget.splitSize;
-    final partsCount = splitSize * splitSize;
+  CaptchaPartPositions _createPositions() {
+    final count = _splitSize * _splitSize;
 
     final output = <CaptchaPartPosition>[];
 
-    for (var i = 0; i < partsCount; i++) {
-      final x = (i % splitSize) * width;
-      final y = (i ~/ splitSize) * height;
+    for (var i = 0; i < count; i++) {
+      final x = (i % _splitSize);
+      final y = (i ~/ _splitSize);
 
       output.add((x: x, y: y));
     }
@@ -343,14 +358,12 @@ final class FlutterCaptchaState extends State<FlutterCaptcha> {
 }
 
 class _CrossLinePainter extends CustomPainter {
-  final double width;
+  final FlutterCaptchaCrossLine crossLine;
   final int count;
-  final Color color;
 
   const _CrossLinePainter({
-    required this.width,
+    required this.crossLine,
     required this.count,
-    required this.color,
   });
 
   @override
@@ -359,8 +372,8 @@ class _CrossLinePainter extends CustomPainter {
     final double cellHeight = size.height / count;
 
     final paint = Paint()
-      ..color = color
-      ..strokeWidth = width;
+      ..color = crossLine.color
+      ..strokeWidth = crossLine.width;
 
     for (var i = 1; i < count; i++) {
       final y = i * cellHeight;
@@ -372,5 +385,5 @@ class _CrossLinePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_CrossLinePainter oldDelegate) =>
-      oldDelegate.width != width;
+      oldDelegate.crossLine != crossLine || oldDelegate.count != count;
 }

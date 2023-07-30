@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter_captcha/flutter_captcha.dart';
 import 'package:flutter/material.dart';
 
@@ -29,13 +31,12 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  final _key = GlobalKey<FlutterCaptchaState>();
-  int _splitSize = 3;
-  bool _canMove = true;
-  bool _canRotate = true;
   bool _crossLined = true;
   double _crossLineWidth = 10.0;
   final _textEditingController = TextEditingController();
+  final _controller = FlutterCaptchaController(
+    random: Random.secure(),
+  )..init();
 
   @override
   void dispose() {
@@ -45,8 +46,6 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-
     return Scaffold(
       drawer: Drawer(
         child: Builder(builder: (context) {
@@ -61,49 +60,37 @@ class _MyHomePageState extends State<MyHomePage> {
                   ),
                   Switch(
                     value: _crossLined,
-                    onChanged: (value) {
-                      setState(() {
-                        _crossLined = value;
-                      });
-                    },
+                    onChanged: (value) => setState(() => _crossLined = value),
                   ),
                   const Text(
                     'Can move',
                     style: TextStyle(fontSize: 20),
                   ),
                   Switch(
-                    value: _canMove,
-                    onChanged: (value) {
-                      setState(() {
-                        _canMove = value;
-                      });
-                    },
+                    value: _controller.randomizePositions,
+                    onChanged: (value) =>
+                        setState(() => _controller.randomizePositions = value),
                   ),
                   const Text(
                     'Can rotate',
                     style: TextStyle(fontSize: 20),
                   ),
                   Switch(
-                    value: _canRotate,
-                    onChanged: (value) {
-                      setState(() {
-                        _canRotate = value;
-                      });
-                    },
+                    value: _controller.randomizeAngles,
+                    onChanged: (value) =>
+                        setState(() => _controller.randomizeAngles = value),
                   ),
                   Text(
-                    'Split size: $_splitSize',
+                    'Split size: ${_controller.splitSize}',
                     style: const TextStyle(fontSize: 20),
                   ),
                   Slider(
-                    value: _splitSize.toDouble(),
+                    value: _controller.splitSize.toDouble(),
                     min: 2,
                     max: 15,
-                    onChanged: (value) {
-                      setState(() {
-                        _splitSize = value.toInt();
-                      });
-                    },
+                    onChanged: (value) => setState(
+                      () => _controller.splitSize = value.toInt(),
+                    ),
                   ),
                   Text(
                     'Cross line width: ${_crossLineWidth.toStringAsFixed(1)}',
@@ -113,11 +100,8 @@ class _MyHomePageState extends State<MyHomePage> {
                     value: _crossLineWidth,
                     min: 1.0,
                     max: 20,
-                    onChanged: (value) {
-                      setState(() {
-                        _crossLineWidth = value;
-                      });
-                    },
+                    onChanged: (value) =>
+                        setState(() => _crossLineWidth = value),
                   ),
                   const SizedBox(
                     height: 20,
@@ -139,7 +123,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   FilledButton(
                     onPressed: () async {
                       final sc = Scaffold.of(context);
-                      _key.currentState!.reset();
+                      _controller.reset();
                       sc.closeDrawer();
                     },
                     child: const Text('Restart'),
@@ -151,7 +135,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   FilledButton(
                     onPressed: () async {
                       final sc = Scaffold.of(context);
-                      _key.currentState!.solve();
+                      _controller.solve();
                       sc.closeDrawer();
                     },
                     child: const Text('Solve'),
@@ -167,22 +151,17 @@ class _MyHomePageState extends State<MyHomePage> {
         title: const Text('Captcha'),
       ),
       body: FlutterCaptcha(
-        key: _key,
+        controller: _controller,
         crossLine:
             _crossLined ? (color: Colors.white, width: _crossLineWidth) : null,
         fit: BoxFit.cover,
-        canMove: _canMove,
-        partsBuilder: (context, part, solved) {
-          return AnimatedContainer(
-            duration: const Duration(milliseconds: 600),
-            color: solved ? Colors.green : Colors.red,
+        partsBuilder: (context, part) {
+          return ColoredBox(
+            color: Colors.red,
             child: part,
           );
         },
-        canRotate: _canRotate,
-        dimension: width,
-        splitSize: _splitSize,
-        draggingBuilder: (_, child, __) => Opacity(opacity: 0.5, child: child),
+        draggingBuilder: (_, child) => Opacity(opacity: 0.5, child: child),
         child: Image.asset('assets/flutter-dash.png'),
       ),
       floatingActionButton: Row(
@@ -201,7 +180,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> _onCheck(BuildContext context) async {
     final scaffold = Scaffold.of(context);
-    if (_key.currentState!.checkSolution()) {
+    if (_controller.checkSolution()) {
       showDialog(
           context: context,
           builder: (context) {

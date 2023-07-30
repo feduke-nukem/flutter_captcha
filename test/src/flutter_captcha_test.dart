@@ -5,67 +5,156 @@ import 'package:flutter_captcha/src/flutter_captcha.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  late GlobalKey<FlutterCaptchaState> key;
   final widget = Container(
     color: Colors.red,
   );
 
-  group('widget', () {
-    setUp(() {
-      key = GlobalKey<FlutterCaptchaState>();
-    });
-    testWidgets('init => is not solved', (widgetTester) async {
-      await widgetTester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: FlutterCaptcha(
-              key: key,
-              dimension: 300.0,
-              fit: BoxFit.cover,
-              child: widget,
-            ),
-          ),
-        ),
-      );
-      expect(key.currentState!.checkSolution(), isFalse);
+  group('controller', () {
+    test('init => is not solved', () {
+      final controller = FlutterCaptchaController()..init();
+      expect(controller.checkSolution(), isFalse);
     });
 
-    testWidgets('init reset => current positions and controllers are different',
-        (widgetTester) async {
-      await widgetTester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: FlutterCaptcha(
-              key: key,
-              dimension: 300.0,
-              fit: BoxFit.cover,
-              child: widget,
-            ),
-          ),
-        ),
-      );
-      final prevPositions = key.currentState!.currentPositions;
-      final prevPartControllers = key.currentState!.controllers;
+    test('init reset => current positions and controllers are different', () {
+      final controller = FlutterCaptchaController()..init();
+      final prevPositions = controller.currentPositions;
+      final prevPartControllers = controller.controllers;
 
-      key.currentState!.reset();
+      controller.reset();
 
-      final resetPositions = key.currentState!.currentPositions;
-      final resetPartControllers = key.currentState!.controllers;
+      final resetPositions = controller.currentPositions;
+      final resetPartControllers = controller.controllers;
 
       expect(identical(prevPositions, resetPositions), isTrue);
       expect(identical(prevPartControllers, resetPartControllers), isTrue);
     });
 
-    testWidgets(
-        'split size 10 => 100 parts, 100 part controllers, 100 widgets found,',
-        (widgetTester) async {
+    test('randomize angles equals false => all start angles are zero,', () {
+      final controller = FlutterCaptchaController(randomizeAngles: false)
+        ..init();
+
+      expect(
+        controller.controllers.every(
+          (element) => element.angle == Angle.zero() && element.angle.isZero,
+        ),
+        isTrue,
+      );
+    });
+    test('can move and can rotate equals false => all are solved,', () {
+      final controller = FlutterCaptchaController(
+        randomizeAngles: false,
+        randomizePositions: false,
+      )..init();
+
+      expect(
+        controller.controllers.every((element) => element.solved),
+        isTrue,
+      );
+    });
+
+    test('split size changed => controller was softly reset with split', () {
+      final controller = FlutterCaptchaController(splitSize: 3)..init();
+
+      expect(controller.currentPositions!.length, equals(9));
+
+      controller.splitSize = 4;
+
+      expect(controller.currentPositions!.length, equals(16));
+
+      controller.splitSize = 2;
+
+      expect(controller.currentPositions!.length, equals(4));
+    });
+
+    test('randomize angles changed => was softly reset', () {
+      final controller = FlutterCaptchaController()..init();
+
+      final prevParts = controller.currentPositions;
+      final prevControllers = controller.controllers;
+
+      controller.randomizeAngles = false;
+
+      final resetParts = controller.currentPositions;
+
+      expect(identical(prevParts, resetParts), isTrue);
+      expect(
+        identical(prevControllers, controller.controllers),
+        isTrue,
+      );
+    });
+
+    test('randomize positions changed => was softly reset', () {
+      final controller = FlutterCaptchaController()..init();
+
+      final prevParts = controller.currentPositions;
+      final prevControllers = controller.controllers;
+
+      controller.randomizePositions = false;
+
+      final resetParts = controller.currentPositions;
+
+      expect(identical(prevParts, resetParts), isTrue);
+      expect(
+        identical(prevControllers, controller.controllers),
+        isTrue,
+      );
+    });
+
+    testWidgets('solve => all parts are solved', (widgetTester) async {
+      final controller = FlutterCaptchaController()..init();
       await widgetTester.pumpWidget(
         MaterialApp(
           home: Scaffold(
             body: FlutterCaptcha(
-              key: key,
+              controller: controller,
+              child: widget,
+            ),
+          ),
+        ),
+      );
+
+      await widgetTester.pumpAndSettle();
+
+      controller.solve();
+
+      await widgetTester.pumpAndSettle();
+
+      expect(
+        controller.controllers.every((element) => element.solved),
+        isTrue,
+      );
+
+      expect(controller.checkSolution(), isTrue);
+    });
+    test('init 3 split size => positions correct', () {
+      final controller = FlutterCaptchaController(splitSize: 3)..init();
+
+      final positions = [
+        (x: 0, y: 0),
+        (x: 1, y: 0),
+        (x: 2, y: 0),
+        (x: 0, y: 1),
+        (x: 1, y: 1),
+        (x: 2, y: 1),
+        (x: 0, y: 2),
+        (x: 1, y: 2),
+        (x: 2, y: 2),
+      ];
+
+      expect(listEquals(positions, controller.currentPositions), isTrue);
+    });
+  });
+  group('widget', () {
+    testWidgets(
+        'split size 10 => 100 parts, 100 part controllers, 100 widgets found,',
+        (widgetTester) async {
+      final controller = FlutterCaptchaController(splitSize: 10)..init();
+      await widgetTester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FlutterCaptcha(
+              controller: controller,
               dimension: 300.0,
-              splitSize: 10,
               fit: BoxFit.cover,
               child: widget,
             ),
@@ -75,68 +164,24 @@ void main() {
 
       await widgetTester.pumpAndSettle();
 
-      expect(key.currentState!.currentPositions!.length, equals(100));
-      expect(key.currentState!.controllers.length, equals(100));
+      expect(controller.currentPositions!.length, equals(100));
+      expect(controller.controllers.length, equals(100));
       expect(find.byType(FlutterCaptchaPart), findsNWidgets(100));
-    });
-
-    testWidgets('can rotate equals false => all start angles are zero,',
-        (widgetTester) async {
-      await widgetTester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: FlutterCaptcha(
-              key: key,
-              canRotate: false,
-              dimension: 300.0,
-              fit: BoxFit.cover,
-              child: widget,
-            ),
-          ),
-        ),
-      );
-      expect(
-        key.currentState!.controllers.every(
-          (element) => element.angle == Angle.zero() && element.angle.isZero,
-        ),
-        isTrue,
-      );
-    });
-    testWidgets('can move and can rotate equals false => all are solved,',
-        (widgetTester) async {
-      await widgetTester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: FlutterCaptcha(
-              key: key,
-              canMove: false,
-              canRotate: false,
-              dimension: 300.0,
-              child: widget,
-            ),
-          ),
-        ),
-      );
-
-      expect(
-        key.currentState!.controllers.every((element) => element.solved),
-        isTrue,
-      );
     });
 
     testWidgets('parts builder is provided => builder is used',
         (widgetTester) async {
       const key = Key('parts_builder');
+      final controller = FlutterCaptchaController(splitSize: 3)..init();
       await widgetTester.pumpWidget(
         MaterialApp(
           home: Scaffold(
             body: FlutterCaptcha(
-              dimension: 300.0,
-              splitSize: 3,
-              partsBuilder: (context, child, isSolved) {
+              controller: controller,
+              partsBuilder: (context, part) {
                 return Container(
                   key: key,
-                  child: child,
+                  child: part,
                 );
               },
               child: widget,
@@ -150,212 +195,6 @@ void main() {
       final finder = find.byKey(key);
 
       expect(finder, findsNWidgets(9));
-    });
-
-    testWidgets(
-        'widget size property changed => controller was softly reset with split',
-        (widgetTester) async {
-      final size = ValueNotifier(3);
-
-      await widgetTester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: ValueListenableBuilder(
-              valueListenable: size,
-              builder: (__, value, _) => FlutterCaptcha(
-                key: key,
-                dimension: 300.0,
-                splitSize: value,
-                child: widget,
-              ),
-            ),
-          ),
-        ),
-      );
-
-      await widgetTester.pumpAndSettle();
-
-      expect(key.currentState!.currentPositions!.length, equals(9));
-
-      size.value = 4;
-
-      await widgetTester.pumpAndSettle();
-
-      expect(key.currentState!.currentPositions!.length, equals(16));
-
-      size.value = 2;
-
-      await widgetTester.pumpAndSettle();
-
-      expect(key.currentState!.currentPositions!.length, equals(4));
-    });
-
-    testWidgets('widget dimension property changed => controller was reset',
-        (widgetTester) async {
-      final dimension = ValueNotifier(300.0);
-
-      await widgetTester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: ValueListenableBuilder(
-              valueListenable: dimension,
-              builder: (__, value, _) => FlutterCaptcha(
-                key: key,
-                dimension: value,
-                child: widget,
-              ),
-            ),
-          ),
-        ),
-      );
-
-      await widgetTester.pumpAndSettle();
-      final prevPositions = key.currentState!.currentPositions;
-      final prevControllers = key.currentState!.controllers;
-
-      dimension.value = 400;
-
-      await widgetTester.pumpAndSettle();
-
-      final resetPositions = key.currentState!.currentPositions;
-
-      expect(identical(prevPositions, resetPositions), isFalse);
-      expect(
-        identical(prevControllers, key.currentState!.controllers),
-        isTrue,
-      );
-    });
-
-    testWidgets(
-        'widget can move property changed => controller was softly reset',
-        (widgetTester) async {
-      final canMove = ValueNotifier(true);
-
-      await widgetTester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: ValueListenableBuilder(
-              valueListenable: canMove,
-              builder: (__, value, _) => FlutterCaptcha(
-                key: key,
-                dimension: 300.0,
-                canMove: value,
-                child: widget,
-              ),
-            ),
-          ),
-        ),
-      );
-
-      await widgetTester.pumpAndSettle();
-      final prevParts = key.currentState!.currentPositions;
-      final prevControllers = key.currentState!.controllers;
-
-      canMove.value = false;
-
-      await widgetTester.pumpAndSettle();
-
-      final resetParts = key.currentState!.currentPositions;
-
-      expect(identical(prevParts, resetParts), isTrue);
-      expect(
-        identical(prevControllers, key.currentState!.controllers),
-        isTrue,
-      );
-    });
-
-    testWidgets(
-        'widget can rotate property changed => controller was softly reset',
-        (widgetTester) async {
-      final canRotate = ValueNotifier(true);
-
-      await widgetTester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: ValueListenableBuilder(
-              valueListenable: canRotate,
-              builder: (__, value, _) => FlutterCaptcha(
-                key: key,
-                dimension: 300.0,
-                canRotate: value,
-                child: widget,
-              ),
-            ),
-          ),
-        ),
-      );
-
-      await widgetTester.pumpAndSettle();
-      final prevParts = key.currentState!.currentPositions;
-      final prevControllers = key.currentState!.controllers;
-
-      canRotate.value = false;
-
-      await widgetTester.pumpAndSettle();
-
-      final resetParts = key.currentState!.currentPositions;
-
-      expect(identical(prevParts, resetParts), isTrue);
-      expect(
-        identical(prevControllers, key.currentState!.controllers),
-        isTrue,
-      );
-    });
-
-    testWidgets('solve => all parts are solved', (widgetTester) async {
-      await widgetTester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: FlutterCaptcha(
-              key: key,
-              dimension: 300.0,
-              splitSize: 3,
-              child: widget,
-            ),
-          ),
-        ),
-      );
-
-      await widgetTester.pumpAndSettle();
-
-      key.currentState!.solve();
-
-      await widgetTester.pumpAndSettle();
-
-      expect(
-        key.currentState!.controllers.every((element) => element.solved),
-        isTrue,
-      );
-
-      expect(key.currentState!.checkSolution(), isTrue);
-    });
-    testWidgets('init 3 split size => positions correct', (widgetTester) async {
-      await widgetTester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: FlutterCaptcha(
-              key: key,
-              dimension: 300.0,
-              splitSize: 3,
-              child: widget,
-            ),
-          ),
-        ),
-      );
-      final positions = [
-        (x: 0.0, y: 0.0),
-        (x: 100.0, y: 0.0),
-        (x: 200.0, y: 0.0),
-        (x: 0.0, y: 100.0),
-        (x: 100.0, y: 100.0),
-        (x: 200.0, y: 100.0),
-        (x: 0.0, y: 200.0),
-        (x: 100.0, y: 200.0),
-        (x: 200.0, y: 200.0),
-      ];
-      await widgetTester.pumpAndSettle();
-
-      expect(listEquals(positions, key.currentState!.currentPositions), isTrue);
     });
   });
 }

@@ -9,14 +9,12 @@ void main() {
         startPosition: (x: 0, y: 1),
         solutionPosition: (x: 1, y: 1),
         angle: Angle.zero(),
-        layout: (dimension: 0, size: 0),
       );
 
       final second = FlutterCaptchaPartController(
         startPosition: (x: 1, y: 1),
         solutionPosition: (x: 0, y: 1),
         angle: Angle.zero(),
-        layout: (dimension: 0, size: 0),
       );
 
       first.maybeSwapPositions(second);
@@ -30,14 +28,12 @@ void main() {
         startPosition: (x: 0, y: 1),
         solutionPosition: (x: 1, y: 1),
         angle: Angle.zero(),
-        layout: (dimension: 0, size: 0),
       );
 
       final second = FlutterCaptchaPartController(
         startPosition: (x: 0, y: 1),
         solutionPosition: (x: 1, y: 1),
         angle: Angle.zero(),
-        layout: (dimension: 0, size: 0),
       );
 
       first.maybeSwapPositions(second);
@@ -48,7 +44,6 @@ void main() {
 
     test('Angle.zero, turn once=> angle equals Angle.quarter', () {
       final controller = FlutterCaptchaPartController(
-        layout: (dimension: 0, size: 0),
         startPosition: (x: 0, y: 1),
         solutionPosition: (x: 1, y: 1),
         angle: Angle.zero(),
@@ -64,7 +59,6 @@ void main() {
         startPosition: (x: 0, y: 1),
         solutionPosition: (x: 1, y: 1),
         angle: Angle.zero(),
-        layout: (dimension: 0, size: 0),
       );
 
       controller.angle += Angle.quarter();

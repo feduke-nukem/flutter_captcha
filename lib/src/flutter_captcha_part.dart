@@ -2,8 +2,8 @@ part of 'flutter_captcha.dart';
 
 /// Part position in the captcha.
 typedef CaptchaPartPosition = ({
-  double x,
-  double y,
+  int x,
+  int y,
 });
 typedef CaptchaLayout = ({
   double dimension,
@@ -18,7 +18,6 @@ typedef CaptchaPartPositions = List<CaptchaPartPosition>;
 typedef FlutterCaptchaPartBuilder = Widget Function(
   BuildContext context,
   Widget part,
-  bool solved,
 );
 
 /// {@template flutter_captcha_part}
@@ -84,6 +83,8 @@ class FlutterCaptchaPart extends StatefulWidget {
 
   final FlutterCaptchaCrossLine? crossLine;
 
+  final CaptchaLayout layout;
+
   /// @nodoc
   const FlutterCaptchaPart({
     required this.moveCurve,
@@ -94,6 +95,7 @@ class FlutterCaptchaPart extends StatefulWidget {
     required this.canMove,
     required this.moveDuration,
     required this.rotateDuration,
+    required this.layout,
     this.crossLine,
     this.draggingBuilder,
     this.fit,
@@ -130,16 +132,15 @@ class _FlutterCaptchaPartState extends State<FlutterCaptchaPart> {
     var child = widget.builder?.call(
           context,
           widget.child,
-          widget.controller.solved,
         ) ??
         widget.child;
 
     child = _Part(
-      dimension: widget.controller._layout.dimension,
-      size: widget.controller._layout.size,
+      dimension: widget.layout.dimension,
+      size: widget.layout.size,
       solutionPosition: widget.controller._solutionPosition,
       child: SizedBox.square(
-        dimension: widget.controller._layout.size,
+        dimension: widget.layout.size,
         child: widget.fit == null
             ? child
             : FittedBox(
@@ -179,7 +180,6 @@ class _FlutterCaptchaPartState extends State<FlutterCaptchaPart> {
       final feedback = widget.feedbackBuilder?.call(
             context,
             rotated,
-            widget.controller.solved,
           ) ??
           rotated;
       result = AbsorbPointer(
@@ -191,14 +191,13 @@ class _FlutterCaptchaPartState extends State<FlutterCaptchaPart> {
           childWhenDragging: widget.draggingBuilder?.call(
                 context,
                 rotated,
-                widget.controller.solved,
               ) ??
               rotated,
           feedback: widget.crossLine != null
               ? ClipRect(
                   clipper: _FeedbackClipper(
                     crossLine: widget.crossLine!,
-                    layout: widget.controller._layout,
+                    layout: widget.layout,
                     position: widget.controller.position,
                   ),
                   child: feedback,
@@ -212,8 +211,8 @@ class _FlutterCaptchaPartState extends State<FlutterCaptchaPart> {
     return AnimatedPositioned(
       onEnd: () => widget.controller._isBusy = false,
       curve: widget.moveCurve,
-      top: widget.controller.position.y,
-      left: widget.controller.position.x,
+      top: widget.layout.size * widget.controller.position.y,
+      left: widget.layout.size * widget.controller.position.x,
       duration: widget.moveDuration,
       child: ClipPath(child: result),
     );
@@ -232,14 +231,11 @@ class FlutterCaptchaPartController extends ChangeNotifier {
     required CaptchaPartPosition startPosition,
     required CaptchaPartPosition solutionPosition,
     required Angle angle,
-    required CaptchaLayout layout,
   })  : _position = startPosition,
         _solutionPosition = solutionPosition,
-        _angle = angle,
-        _layout = layout;
+        _angle = angle;
 
   CaptchaPartPosition _solutionPosition;
-  CaptchaLayout _layout;
 
   /// True if align animation is playing to prevent unwanted collisions.
   bool _isBusy = false;
@@ -283,12 +279,10 @@ class FlutterCaptchaPartController extends ChangeNotifier {
     required CaptchaPartPosition position,
     required CaptchaPartPosition solutionPosition,
     required Angle angle,
-    required CaptchaLayout layout,
   }) {
     _position = position;
     _angle = angle;
     _solutionPosition = solutionPosition;
-    _layout = layout;
     notifyListeners();
   }
 
@@ -380,7 +374,10 @@ class _RenderPart extends RenderProxyBox {
       offset,
       Rect.fromLTWH(0, 0, _partSize, _partSize),
       (context, offset) {
-        context.canvas.translate(-_solutionPosition.x, -_solutionPosition.y);
+        context.canvas.translate(
+          -_solutionPosition.x * _partSize,
+          -_solutionPosition.y * _partSize,
+        );
         super.paint(context, offset);
       },
       oldLayer: layer as ClipRectLayer?,
