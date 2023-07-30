@@ -143,6 +143,18 @@ void main() {
 
       expect(listEquals(positions, controller.currentPositions), isTrue);
     });
+
+    test('disposes correctly', () {
+      final controller = FlutterCaptchaController()..init();
+
+      expect(controller.controllers.length, greaterThan(0));
+      expect(controller.currentPositions, isNotNull);
+
+      controller.dispose();
+
+      expect(controller.controllers.length, equals(0));
+      expect(controller.currentPositions, isNull);
+    });
   });
   group('widget', () {
     testWidgets(

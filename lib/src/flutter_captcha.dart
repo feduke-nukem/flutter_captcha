@@ -262,7 +262,6 @@ final class FlutterCaptchaController extends ChangeNotifier {
   @override
   void dispose() {
     _releaseControllers();
-
     currentPositions = null;
     super.dispose();
   }
