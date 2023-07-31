@@ -356,8 +356,6 @@ class _RenderPart extends RenderProxyBox {
 
   @override
   void performLayout() {
-    super.performLayout();
-
     child!.layout(
       BoxConstraints.tightFor(
         width: _dimension,
