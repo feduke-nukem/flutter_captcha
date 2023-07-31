@@ -1,7 +1,7 @@
 part of 'flutter_captcha.dart';
 
-/// Part position in the captcha.
-typedef CaptchaPartPosition = ({
+/// Part point in the captcha.
+typedef CaptchaPoint = ({
   int x,
   int y,
 });
@@ -10,7 +10,7 @@ typedef CaptchaLayout = ({
   double size,
 });
 
-typedef CaptchaPartPositions = List<CaptchaPartPosition>;
+typedef CaptchaPoints = List<CaptchaPoint>;
 
 /// {@template flutter_captcha_part.builder}
 /// A builder for the captcha parts.
@@ -138,7 +138,7 @@ class _FlutterCaptchaPartState extends State<FlutterCaptchaPart> {
     child = _Part(
       dimension: widget.layout.dimension,
       size: widget.layout.size,
-      solutionPosition: widget.controller._solutionPosition,
+      solutionPoint: widget.controller._solutionPoint,
       child: SizedBox.square(
         dimension: widget.layout.size,
         child: widget.fit == null
@@ -152,9 +152,9 @@ class _FlutterCaptchaPartState extends State<FlutterCaptchaPart> {
 
     var result = widget.canMove
         ? DragTarget<FlutterCaptchaPartController>(
-            onWillAccept: (data) => widget.controller._canMove(data!._position),
+            onWillAccept: (data) => widget.controller._canMove(data!._point),
             onAcceptWithDetails: (details) =>
-                widget.controller.maybeSwapPositions(details.data),
+                widget.controller.maybeSwapPoints(details.data),
             builder: (context, _, __) => child,
           )
         : child;
@@ -198,7 +198,7 @@ class _FlutterCaptchaPartState extends State<FlutterCaptchaPart> {
                   clipper: _FeedbackClipper(
                     crossLine: widget.crossLine!,
                     layout: widget.layout,
-                    position: widget.controller.position,
+                    point: widget.controller.point,
                   ),
                   child: feedback,
                 )
@@ -211,8 +211,8 @@ class _FlutterCaptchaPartState extends State<FlutterCaptchaPart> {
     return AnimatedPositioned(
       onEnd: () => widget.controller._isBusy = false,
       curve: widget.moveCurve,
-      top: widget.layout.size * widget.controller.position.y,
-      left: widget.layout.size * widget.controller.position.x,
+      top: widget.layout.size * widget.controller.point.y,
+      left: widget.layout.size * widget.controller.point.x,
       duration: widget.moveDuration,
       child: ClipPath(child: result),
     );
@@ -228,25 +228,25 @@ class _FlutterCaptchaPartState extends State<FlutterCaptchaPart> {
 /// {@endtemplate}
 class FlutterCaptchaPartController extends ChangeNotifier {
   FlutterCaptchaPartController({
-    required CaptchaPartPosition startPosition,
-    required CaptchaPartPosition solutionPosition,
+    required CaptchaPoint startPoint,
+    required CaptchaPoint solutionPoint,
     required Angle angle,
-  })  : _position = startPosition,
-        _solutionPosition = solutionPosition,
+  })  : _point = startPoint,
+        _solutionPoint = solutionPoint,
         _angle = angle;
 
-  CaptchaPartPosition _solutionPosition;
+  CaptchaPoint _solutionPoint;
 
   /// True if align animation is playing to prevent unwanted collisions.
   bool _isBusy = false;
 
-  CaptchaPartPosition _position;
-  CaptchaPartPosition get position => _position;
-  set position(CaptchaPartPosition position) {
-    if (!_canMove(position)) return;
+  CaptchaPoint _point;
+  CaptchaPoint get point => _point;
+  set point(CaptchaPoint value) {
+    if (!_canMove(value)) return;
 
     _isBusy = true;
-    _position = position;
+    _point = value;
     notifyListeners();
   }
 
@@ -258,36 +258,36 @@ class FlutterCaptchaPartController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Whether the part is in its solution position.
-  bool get solved => _angle.isZero && _position == _solutionPosition;
+  /// Whether the part is in its solution point.
+  bool get solved => _angle.isZero && _point == _solutionPoint;
 
-  /// A part can move to a position if it is not busy and the position is not
-  /// the current position.
-  void maybeSwapPositions(FlutterCaptchaPartController other) {
+  /// A part can move to a point if it is not busy and the point is not
+  /// the current point.
+  void maybeSwapPoints(FlutterCaptchaPartController other) {
     if (_isBusy || other._isBusy) return;
 
-    final changeableNewPosition = other.position;
-    other.position = position;
-    position = changeableNewPosition;
+    final changeableNewPosition = other.point;
+    other.point = point;
+    point = changeableNewPosition;
 
-    if (changeableNewPosition != other.position) {}
+    if (changeableNewPosition != other.point) {}
   }
 
-  bool _canMove(CaptchaPartPosition position) => position != _position;
+  bool _canMove(CaptchaPoint point) => point != _point;
 
   void _update({
-    required CaptchaPartPosition position,
-    required CaptchaPartPosition solutionPosition,
+    required CaptchaPoint point,
+    required CaptchaPoint solutionPoint,
     required Angle angle,
   }) {
-    _position = position;
+    _point = point;
     _angle = angle;
-    _solutionPosition = solutionPosition;
+    _solutionPoint = solutionPoint;
     notifyListeners();
   }
 
   void _solve() {
-    _position = _solutionPosition;
+    _point = _solutionPoint;
     _angle = Angle.zero();
     notifyListeners();
   }
@@ -296,12 +296,12 @@ class FlutterCaptchaPartController extends ChangeNotifier {
 class _Part extends SingleChildRenderObjectWidget {
   final double dimension;
   final double size;
-  final CaptchaPartPosition solutionPosition;
+  final CaptchaPoint solutionPoint;
 
   const _Part({
     required this.dimension,
     required this.size,
-    required this.solutionPosition,
+    required this.solutionPoint,
     required super.child,
   });
 
@@ -309,7 +309,7 @@ class _Part extends SingleChildRenderObjectWidget {
   _RenderPart createRenderObject(BuildContext context) => _RenderPart(
         dimension: dimension,
         partSize: size,
-        position: solutionPosition,
+        point: solutionPoint,
       );
 
   @override
@@ -317,7 +317,7 @@ class _Part extends SingleChildRenderObjectWidget {
     renderObject
       ..dimension = dimension
       ..partSize = size
-      ..solutionPosition = solutionPosition;
+      ..solutionPoint = solutionPoint;
   }
 }
 
@@ -338,19 +338,19 @@ class _RenderPart extends RenderProxyBox {
     markNeedsLayout();
   }
 
-  CaptchaPartPosition _solutionPosition;
-  set solutionPosition(CaptchaPartPosition value) {
-    if (_solutionPosition == value) return;
+  CaptchaPoint _solutionPoint;
+  set solutionPoint(CaptchaPoint value) {
+    if (_solutionPoint == value) return;
 
-    _solutionPosition = value;
+    _solutionPoint = value;
     markNeedsLayout();
   }
 
   _RenderPart({
     required double dimension,
     required double partSize,
-    required CaptchaPartPosition position,
-  })  : _solutionPosition = position,
+    required CaptchaPoint point,
+  })  : _solutionPoint = point,
         _dimension = dimension,
         _partSize = partSize;
 
@@ -375,8 +375,8 @@ class _RenderPart extends RenderProxyBox {
       Rect.fromLTWH(0, 0, _partSize, _partSize),
       (context, offset) {
         context.canvas.translate(
-          -_solutionPosition.x * _partSize,
-          -_solutionPosition.y * _partSize,
+          -_solutionPoint.x * _partSize,
+          -_solutionPoint.y * _partSize,
         );
         super.paint(context, offset);
       },
@@ -387,29 +387,29 @@ class _RenderPart extends RenderProxyBox {
 
 class _FeedbackClipper extends CustomClipper<Rect> {
   final FlutterCaptchaCrossLine crossLine;
-  final CaptchaPartPosition position;
+  final CaptchaPoint point;
   final CaptchaLayout layout;
 
   const _FeedbackClipper({
     required this.crossLine,
-    required this.position,
+    required this.point,
     required this.layout,
   });
 
   @override
   Rect getClip(Size size) {
-    final isPositiveX = position.x > 0;
-    final isPositiveY = position.y > 0;
+    final isPositiveX = point.x > 0;
+    final isPositiveY = point.y > 0;
     final isAtBoundaryX =
-        isPositiveX && position.x != layout.dimension - layout.size;
+        isPositiveX && point.x != layout.dimension - layout.size;
     final isAtBoundaryY =
-        isPositiveY && position.y != layout.dimension - layout.size;
+        isPositiveY && point.y != layout.dimension - layout.size;
     final clipValue = crossLine.width / 2;
 
     final top = isPositiveY ? clipValue : 0.0;
     final left = isPositiveX ? clipValue : 0.0;
-    final bottom = isAtBoundaryY || position.y == 0 ? clipValue : 0.0;
-    final right = isAtBoundaryX || position.x == 0 ? clipValue : 0.0;
+    final bottom = isAtBoundaryY || point.y == 0 ? clipValue : 0.0;
+    final right = isAtBoundaryX || point.x == 0 ? clipValue : 0.0;
 
     return Rect.fromLTRB(
       left,
@@ -422,6 +422,6 @@ class _FeedbackClipper extends CustomClipper<Rect> {
   @override
   bool shouldReclip(_FeedbackClipper oldClipper) =>
       oldClipper.crossLine != crossLine ||
-      oldClipper.position != position ||
+      oldClipper.point != point ||
       oldClipper.layout != layout;
 }

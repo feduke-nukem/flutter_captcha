@@ -81,15 +81,15 @@ class _MyHomePageState extends State<MyHomePage> {
                         setState(() => _controller.randomizeAngles = value),
                   ),
                   Text(
-                    'Split size: ${_controller.splitSize}',
+                    'Split size: ${_controller.size}',
                     style: const TextStyle(fontSize: 20),
                   ),
                   Slider(
-                    value: _controller.splitSize.toDouble(),
+                    value: _controller.size.toDouble(),
                     min: 2,
                     max: 15,
                     onChanged: (value) => setState(
-                      () => _controller.splitSize = value.toInt(),
+                      () => _controller.size = value.toInt(),
                     ),
                   ),
                   Text(

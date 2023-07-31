@@ -4,48 +4,48 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('controller', () {
-    test('swap different positions => swapped normally', () {
+    test('swap different points => swapped normally', () {
       final first = FlutterCaptchaPartController(
-        startPosition: (x: 0, y: 1),
-        solutionPosition: (x: 1, y: 1),
+        startPoint: (x: 0, y: 1),
+        solutionPoint: (x: 1, y: 1),
         angle: Angle.zero(),
       );
 
       final second = FlutterCaptchaPartController(
-        startPosition: (x: 1, y: 1),
-        solutionPosition: (x: 0, y: 1),
+        startPoint: (x: 1, y: 1),
+        solutionPoint: (x: 0, y: 1),
         angle: Angle.zero(),
       );
 
-      first.maybeSwapPositions(second);
+      first.maybeSwapPoints(second);
 
-      expect(first.position, (x: 1, y: 1));
-      expect(second.position, (x: 0, y: 1));
+      expect(first.point, (x: 1, y: 1));
+      expect(second.point, (x: 0, y: 1));
     });
 
-    test('swap same positions => no swap', () {
+    test('swap same points => no swap', () {
       final first = FlutterCaptchaPartController(
-        startPosition: (x: 0, y: 1),
-        solutionPosition: (x: 1, y: 1),
+        startPoint: (x: 0, y: 1),
+        solutionPoint: (x: 1, y: 1),
         angle: Angle.zero(),
       );
 
       final second = FlutterCaptchaPartController(
-        startPosition: (x: 0, y: 1),
-        solutionPosition: (x: 1, y: 1),
+        startPoint: (x: 0, y: 1),
+        solutionPoint: (x: 1, y: 1),
         angle: Angle.zero(),
       );
 
-      first.maybeSwapPositions(second);
+      first.maybeSwapPoints(second);
 
-      expect(first.position, (x: 0, y: 1));
-      expect(second.position, (x: 0, y: 1));
+      expect(first.point, (x: 0, y: 1));
+      expect(second.point, (x: 0, y: 1));
     });
 
     test('Angle.zero, turn once=> angle equals Angle.quarter', () {
       final controller = FlutterCaptchaPartController(
-        startPosition: (x: 0, y: 1),
-        solutionPosition: (x: 1, y: 1),
+        startPoint: (x: 0, y: 1),
+        solutionPoint: (x: 1, y: 1),
         angle: Angle.zero(),
       );
 
@@ -56,8 +56,8 @@ void main() {
 
     test('Angle.zero, turn twice => angle equals Angle.half', () {
       final controller = FlutterCaptchaPartController(
-        startPosition: (x: 0, y: 1),
-        solutionPosition: (x: 1, y: 1),
+        startPoint: (x: 0, y: 1),
+        solutionPoint: (x: 1, y: 1),
         angle: Angle.zero(),
       );
 

@@ -138,7 +138,7 @@ final class _FlutterCaptchaState extends State<FlutterCaptcha> {
   }
 
   @override
-  void didUpdateWidget(covariant FlutterCaptcha oldWidget) {
+  void didUpdateWidget(FlutterCaptcha oldWidget) {
     super.didUpdateWidget(oldWidget);
 
     if (oldWidget.controller != widget.controller) {
@@ -148,13 +148,19 @@ final class _FlutterCaptchaState extends State<FlutterCaptcha> {
   }
 
   @override
+  void dispose() {
+    widget.controller.removeListener(_rebuild);
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return RepaintBoundary(
       child: LayoutBuilder(
         builder: (_, constraints) {
           final dimension =
               widget.dimension ?? constraints.biggest.shortestSide;
-          final partSize = dimension / widget.controller.splitSize;
+          final partSize = dimension / widget.controller.size;
 
           return SizedBox.square(
             dimension: dimension,
@@ -181,10 +187,10 @@ final class _FlutterCaptchaState extends State<FlutterCaptcha> {
                 if (widget.crossLine != null)
                   IgnorePointer(
                     child: CustomPaint(
-                      size: Size.square(constraints.biggest.shortestSide),
+                      size: Size.square(dimension),
                       painter: _CrossLinePainter(
                         crossLine: widget.crossLine!,
-                        count: widget.controller.splitSize,
+                        count: widget.controller.size,
                       ),
                     ),
                   ),
@@ -203,16 +209,16 @@ final class _FlutterCaptchaState extends State<FlutterCaptcha> {
 final class FlutterCaptchaController extends ChangeNotifier {
   final math.Random _random;
 
-  int _splitSize;
+  int _size;
 
-  /// Captcha will be split into [splitSize]x[splitSize] parts.
+  /// Captcha will be split into [size]x[size] parts.
   ///
   /// For example, if size is 2, the captcha will contain 4 parts.
-  int get splitSize => _splitSize;
-  set splitSize(int value) {
-    if (_splitSize == value) return;
+  int get size => _size;
+  set size(int value) {
+    if (_size == value) return;
 
-    _splitSize = value;
+    _size = value;
     _init();
   }
 
@@ -246,15 +252,15 @@ final class FlutterCaptchaController extends ChangeNotifier {
   final controllers = <FlutterCaptchaPartController>[];
 
   @visibleForTesting
-  CaptchaPartPositions? currentPositions;
+  CaptchaPoints? currentPoints;
 
   FlutterCaptchaController({
-    int splitSize = 2,
+    int size = 2,
     bool randomizeAngles = true,
     bool randomizePositions = true,
     math.Random? random,
-  })  : assert(splitSize > 1, 'splitSize must be greater than 1'),
-        _splitSize = splitSize,
+  })  : assert(size > 1, 'size must be greater than 1'),
+        _size = size,
         _randomizeAngles = randomizeAngles,
         _randomizePositions = randomizePositions,
         _random = random ?? math.Random();
@@ -262,10 +268,13 @@ final class FlutterCaptchaController extends ChangeNotifier {
   @override
   void dispose() {
     _releaseControllers();
-    currentPositions = null;
+    currentPoints = null;
     super.dispose();
   }
 
+  /// Initialize controller.
+  ///
+  /// Sets positions and angles.
   void init() => _init();
 
   /// Whether the captcha is solved.
@@ -275,7 +284,7 @@ final class FlutterCaptchaController extends ChangeNotifier {
   /// Resets the captcha.
   ///
   /// This will reshuffle positions and angles.
-  void reset() => _init(positions: currentPositions!);
+  void reset() => _init(points: currentPoints!);
 
   /// Set positions and angles to their solved values.
   void solve() {
@@ -284,62 +293,59 @@ final class FlutterCaptchaController extends ChangeNotifier {
     }
   }
 
-  void _init({CaptchaPartPositions? positions}) {
-    final newPositions = currentPositions = positions ?? _createPositions();
+  void _init({CaptchaPoints? points}) {
+    final newPositions =
+        currentPoints = points ?? _generatePoints().toList(growable: false);
 
     _setupControllers(newPositions);
 
     notifyListeners();
   }
 
-  void _setupControllers(CaptchaPartPositions positions) {
-    final solutionPositions = positions.toList(growable: false);
-    final startPositions = positions.toList(growable: false);
+  Iterable<CaptchaPoint> _generatePoints() sync* {
+    final count = _size * _size;
+
+    for (var i = 0; i < count; i++) {
+      final x = (i % _size);
+      final y = (i ~/ _size);
+
+      yield (x: x, y: y);
+    }
+  }
+
+  void _setupControllers(CaptchaPoints points) {
+    final solutionPoints = points.toList(growable: false);
+    final startPoints = points.toList(growable: false);
     final angles = Angle.all();
 
-    if (_randomizePositions) startPositions.shuffle(_random);
+    if (_randomizePositions) startPoints.shuffle(_random);
 
-    assert(startPositions.length == solutionPositions.length);
+    assert(startPoints.length == solutionPoints.length);
 
-    final canUpdateControllers = controllers.length == positions.length;
+    final canUpdateControllers = controllers.length == points.length;
     if (!canUpdateControllers) _releaseControllers();
 
-    for (var i = 0; i < solutionPositions.length; i++) {
-      final startPosition = startPositions[i];
-      final solutionPosition = solutionPositions[i];
+    for (var i = 0; i < solutionPoints.length; i++) {
+      final startPoint = startPoints[i];
+      final solutionPoint = solutionPoints[i];
 
       final angle =
           _randomizeAngles ? _createRandomAngle(angles) : Angle.zero();
 
       canUpdateControllers
           ? controllers[i]._update(
-              position: startPosition,
-              solutionPosition: solutionPosition,
+              point: startPoint,
+              solutionPoint: solutionPoint,
               angle: angle,
             )
           : controllers.add(
               FlutterCaptchaPartController(
                 angle: angle,
-                startPosition: startPosition,
-                solutionPosition: solutionPosition,
+                startPoint: startPoint,
+                solutionPoint: solutionPoint,
               ),
             );
     }
-  }
-
-  CaptchaPartPositions _createPositions() {
-    final count = _splitSize * _splitSize;
-
-    final output = <CaptchaPartPosition>[];
-
-    for (var i = 0; i < count; i++) {
-      final x = (i % _splitSize);
-      final y = (i ~/ _splitSize);
-
-      output.add((x: x, y: y));
-    }
-
-    return output;
   }
 
   void _releaseControllers() {
