@@ -284,7 +284,11 @@ final class FlutterCaptchaController extends ChangeNotifier {
   /// Resets the captcha.
   ///
   /// This will reshuffle positions and angles.
-  void reset() => _init(points: currentPoints!);
+  void reset() {
+    assert(currentPoints != null, 'controller was not initialized');
+
+    _init(points: currentPoints!);
+  }
 
   /// Set positions and angles to their solved values.
   void solve() {
@@ -294,28 +298,31 @@ final class FlutterCaptchaController extends ChangeNotifier {
   }
 
   void _init({CaptchaPoints? points}) {
-    final newPositions =
-        currentPoints = points ?? _generatePoints().toList(growable: false);
+    final newPositions = currentPoints = points ?? _generatePoints();
 
     _setupControllers(newPositions);
 
     notifyListeners();
   }
 
-  Iterable<CaptchaPoint> _generatePoints() sync* {
+  List<CaptchaPoint> _generatePoints() {
     final count = _size * _size;
+
+    final points = <CaptchaPoint>[];
 
     for (var i = 0; i < count; i++) {
       final x = (i % _size);
       final y = (i ~/ _size);
 
-      yield (x: x, y: y);
+      points.add((x: x, y: y));
     }
+
+    return points;
   }
 
   void _setupControllers(CaptchaPoints points) {
-    final solutionPoints = points.toList(growable: false);
-    final startPoints = points.toList(growable: false);
+    final solutionPoints = points.toList();
+    final startPoints = points.toList();
     final angles = Angle.all();
 
     if (_randomizePositions) startPoints.shuffle(_random);
