@@ -298,14 +298,14 @@ final class FlutterCaptchaController extends ChangeNotifier {
   }
 
   void _init({CaptchaPoints? points}) {
-    final newPositions = currentPoints = points ?? _generatePoints();
+    final newPositions = currentPoints = points ?? _createPoints();
 
     _setupControllers(newPositions);
 
     notifyListeners();
   }
 
-  List<CaptchaPoint> _generatePoints() {
+  List<CaptchaPoint> _createPoints() {
     final count = _size * _size;
 
     final points = <CaptchaPoint>[];
