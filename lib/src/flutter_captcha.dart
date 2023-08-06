@@ -169,7 +169,7 @@ final class _FlutterCaptchaState extends State<FlutterCaptcha> {
                 for (final controller in widget.controller.controllers)
                   FlutterCaptchaPart(
                     key: ObjectKey(controller),
-                    layout: (dimension: dimension, size: partSize),
+                    layout: (dimension: dimension, partSize: partSize),
                     canMove: widget.controller.randomizePositions,
                     canRotate: widget.controller.randomizeAngles,
                     builder: widget.partsBuilder,

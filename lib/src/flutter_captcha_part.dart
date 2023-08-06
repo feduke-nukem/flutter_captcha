@@ -7,7 +7,7 @@ typedef CaptchaPoint = ({
 });
 typedef CaptchaLayout = ({
   double dimension,
-  double size,
+  double partSize,
 });
 
 typedef CaptchaPoints = List<CaptchaPoint>;
@@ -137,10 +137,10 @@ class _FlutterCaptchaPartState extends State<FlutterCaptchaPart> {
 
     child = _Part(
       dimension: widget.layout.dimension,
-      size: widget.layout.size,
+      size: widget.layout.partSize,
       solutionPoint: widget.controller._solutionPoint,
       child: SizedBox.square(
-        dimension: widget.layout.size,
+        dimension: widget.layout.partSize,
         child: widget.fit == null
             ? child
             : FittedBox(
@@ -174,7 +174,7 @@ class _FlutterCaptchaPartState extends State<FlutterCaptchaPart> {
 
     if (widget.canMove) {
       final rotated = Transform.rotate(
-        angle: widget.controller.angle.absoluteValue * (2 * math.pi),
+        angle: widget.controller.angle.value * (2 * math.pi),
         child: child,
       );
       final feedback = widget.feedbackBuilder?.call(
@@ -211,8 +211,8 @@ class _FlutterCaptchaPartState extends State<FlutterCaptchaPart> {
     return AnimatedPositioned(
       onEnd: () => widget.controller._isBusy = false,
       curve: widget.moveCurve,
-      top: widget.layout.size * widget.controller.point.y,
-      left: widget.layout.size * widget.controller.point.x,
+      top: widget.layout.partSize * widget.controller.point.y,
+      left: widget.layout.partSize * widget.controller.point.x,
       duration: widget.moveDuration,
       child: ClipPath(child: result),
     );
@@ -401,9 +401,9 @@ class _FeedbackClipper extends CustomClipper<Rect> {
     final isPositiveX = point.x > 0;
     final isPositiveY = point.y > 0;
     final isAtBoundaryX =
-        isPositiveX && point.x != layout.dimension - layout.size;
+        isPositiveX && point.x != layout.dimension - layout.partSize;
     final isAtBoundaryY =
-        isPositiveY && point.y != layout.dimension - layout.size;
+        isPositiveY && point.y != layout.dimension - layout.partSize;
     final clipValue = crossLine.width / 2;
 
     final top = isPositiveY ? clipValue : 0.0;
@@ -414,8 +414,8 @@ class _FeedbackClipper extends CustomClipper<Rect> {
     return Rect.fromLTRB(
       left,
       top,
-      layout.size - right,
-      layout.size - bottom,
+      layout.partSize - right,
+      layout.partSize - bottom,
     );
   }
 

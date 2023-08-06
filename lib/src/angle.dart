@@ -1,23 +1,18 @@
-const _zero = 0.0;
-const _quarter = 1 / 4;
-const _half = 2 / 4;
-const _third = 3 / 4;
-
 /// Represents an angle.
 final class Angle {
   const Angle._(this.value);
 
   /// 0 degrees.
-  factory Angle.zero() => const Angle._(_zero);
+  factory Angle.zero() => const Angle._(0.0);
 
   /// 90 degrees.
-  factory Angle.quarter() => const Angle._(_quarter);
+  factory Angle.quarter() => const Angle._(1 / 4);
 
   /// 180 degrees.
-  factory Angle.third() => const Angle._(_third);
+  factory Angle.half() => const Angle._(2 / 4);
 
   /// 270 degrees.
-  factory Angle.half() => const Angle._(_half);
+  factory Angle.third() => const Angle._(3 / 4);
 
   /// All possible angles.
   static List<Angle> all() => [
@@ -36,7 +31,7 @@ final class Angle {
   double get absoluteValue => value % 1;
 
   /// Whether the angle is zero.
-  bool get isZero => value == _zero || absoluteValue == _zero;
+  bool get isZero => absoluteValue == 0.0;
 
   Angle operator +(Angle other) => Angle._(value + other.value);
 
