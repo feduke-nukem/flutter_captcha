@@ -269,8 +269,6 @@ class FlutterCaptchaPartController extends ChangeNotifier {
     final changeableNewPosition = other.point;
     other.point = point;
     point = changeableNewPosition;
-
-    if (changeableNewPosition != other.point) {}
   }
 
   bool _canMove(CaptchaPoint point) => point != _point;
