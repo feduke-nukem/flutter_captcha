@@ -1,4 +1,11 @@
+
+
 #### Flutter Captcha
+
+<a href="https://codecov.io/gh/feduke-nukem/flutter_captcha" > 
+ <img src="https://codecov.io/gh/feduke-nukem/flutter_captcha/graph/badge.svg?token=XEATIDADCY"/> 
+</a>
+
 
 <img src="https://github.com/feduke-nukem/flutter_captcha/assets/72284940/4943f240-ffe1-4bcc-98fc-f7f7d8188ac5" alt="2" height="400"/>
 <img src="https://github.com/feduke-nukem/flutter_captcha/assets/72284940/add3ad8c-baf2-403e-bb52-2a7ba6005b5b" alt="3" height="400"/>
