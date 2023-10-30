@@ -151,19 +151,22 @@ class _MyHomePageState extends State<MyHomePage> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: const Text('Captcha'),
       ),
-      body: FlutterCaptcha(
-        controller: _controller,
-        crossLine:
-            _crossLined ? (color: Colors.white, width: _crossLineWidth) : null,
-        fit: BoxFit.cover,
-        partsBuilder: (context, part) {
-          return ColoredBox(
-            color: Colors.red,
-            child: part,
-          );
-        },
-        draggingBuilder: (_, child) => Opacity(opacity: 0.5, child: child),
-        child: Image.asset('assets/flutter-dash.png'),
+      body: Center(
+        child: FlutterCaptcha(
+          controller: _controller,
+          crossLine: _crossLined
+              ? (color: Colors.white, width: _crossLineWidth)
+              : null,
+          fit: BoxFit.cover,
+          partsBuilder: (context, part) {
+            return ColoredBox(
+              color: Colors.red,
+              child: part,
+            );
+          },
+          draggingBuilder: (_, child) => Opacity(opacity: 0.5, child: child),
+          child: Image.asset('assets/flutter-dash.png'),
+        ),
       ),
       floatingActionButton: Row(
         mainAxisSize: MainAxisSize.min,
