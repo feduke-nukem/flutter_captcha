@@ -40,8 +40,8 @@ jobs:
 
       - name: Build Flutter Web
         run: |
-          / flutter build web --web-renderer canvaskit --base-href /flutter_captcha/
-          \ mkdir -p /_site
+          flutter build web --web-renderer canvaskit --base-href /flutter_captcha/
+          mkdir -p /_site
           mv /build/web /_site
           
       - name: List Contents
