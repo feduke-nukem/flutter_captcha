@@ -35,26 +35,10 @@ jobs:
       - uses: subosito/flutter-action@v2.10.0
 
       - name: Install Dependencies
-        run: flutter packages get
-      - name: Checkout
-        uses: actions/checkout@v3
-      - name: Setup Pages
-        uses: actions/configure-pages@v3
+        run: flutter pub get
+
       - name: Build Flutter Web
-        run: |
-          flutter build web --web-renderer canvaskit --base-href /flutter_captcha/
-          mv build/web /github/workspace//web-artifacts
-          echo $RUNNER_TEMP
-      - name: Build with Jekyll
-        uses: actions/jekyll-build-pages@v1
-        with:
-          source: /web-artifacts
-          destination: ./_site
-      - name: Upload Flutter Web Artifacts
-        uses: actions/upload-artifact@v2
-        with:
-          name: flutter-web-artifacts
-          path: "./_site"
+        run: flutter build web --web-renderer canvaskit --base-href /flutter_captcha/
 
   # Deployment job
   deploy:
@@ -65,5 +49,8 @@ jobs:
     needs: build
     steps:
       - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v2
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.TOKEN }}
+          publish_dir: build/web
+          publish_branch: gh-pages
