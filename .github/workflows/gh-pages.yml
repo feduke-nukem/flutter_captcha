@@ -39,8 +39,9 @@ jobs:
         run: flutter pub get
 
       - name: Build Flutter Web
-        run: |
-          flutter build web --web-renderer canvaskit --base-href /flutter_captcha/
+        run: flutter build web --web-renderer canvaskit
+      - name: List
+        run: ls -l build/web
 
   # Deployment job
   deploy:
