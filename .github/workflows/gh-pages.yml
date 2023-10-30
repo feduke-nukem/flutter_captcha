@@ -42,7 +42,7 @@ jobs:
         run: |
           flutter build web --web-renderer canvaskit --base-href /flutter_captcha/
           mkdir -p site
-          mv /build/web site
+          mv build/web site
           
       - name: List Contents
         run: ls -l site
