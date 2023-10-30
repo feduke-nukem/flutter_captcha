@@ -45,7 +45,7 @@ jobs:
           flutter build web --web-renderer canvaskit --base-href /flutter_captcha/
           mkdir -p $RUNNER_TEMP/web-artifacts
           mv build/web $RUNNER_TEMP/web-artifacts
-          ls -l ${{ runner.workspace }}/web-artifacts
+          ls -l $RUNNER_TEMP/web-artifacts
       - name: Build with Jekyll
         uses: actions/jekyll-build-pages@v1
         with:
