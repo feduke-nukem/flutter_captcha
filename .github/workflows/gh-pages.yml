@@ -41,28 +41,14 @@ jobs:
       - name: Build Flutter Web
         run: |
           flutter build web --web-renderer canvaskit --base-href /flutter_captcha/
-          mkdir -p site
-          mv build/web site
-          
-      - name: List Contents
-        run: ls -l site
-
-      - name: List Contents 2
-        run: ls -l example/build/web
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v2
-        with:
-          path: site
 
   # Deployment job
   deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     needs: build
     steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v2
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: build/web
