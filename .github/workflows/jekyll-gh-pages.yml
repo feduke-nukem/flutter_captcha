@@ -31,7 +31,10 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Setup Pages
+        uses: actions/configure-pages@v3
       - uses: subosito/flutter-action@v2.10.0
 
       - name: Install Dependencies
@@ -39,6 +42,14 @@ jobs:
 
       - name: Build Flutter Web
         run: flutter build web --web-renderer canvaskit --base-href /flutter_captcha/
+
+      - name: Build with Jekyll
+        uses: actions/jekyll-build-pages@v1
+        with:
+          source: ./
+          destination: ./_site
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v2
 
   # Deployment job
   deploy:
@@ -49,8 +60,5 @@ jobs:
     needs: build
     steps:
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: build/web
-          publish_branch: gh-pages
+        id: deployment
+        uses: actions/deploy-pages@v2
