@@ -43,13 +43,12 @@ jobs:
       - name: Build Flutter Web
         run: |
           flutter build web --web-renderer canvaskit --base-href /flutter_captcha/
-          mkdir -p $RUNNER_TEMP/web-artifacts
-          mv build/web $RUNNER_TEMP/web-artifacts
-          ls -l $RUNNER_TEMP/web-artifacts
+          mv build/web /github/workspace//web-artifacts
+          echo $RUNNER_TEMP
       - name: Build with Jekyll
         uses: actions/jekyll-build-pages@v1
         with:
-          source: $RUNNER_TEMP/web-artifacts
+          source: /web-artifacts
           destination: ./_site
       - name: Upload Flutter Web Artifacts
         uses: actions/upload-artifact@v2
