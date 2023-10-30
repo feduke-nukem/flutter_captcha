@@ -41,17 +41,19 @@ jobs:
       - name: Build Flutter Web
         run: |
           flutter build web --web-renderer canvaskit --base-href /flutter_captcha/
-          mkdir -p /_site
-          mv /build/web /_site
+          mkdir -p site
+          mv /build/web site
           
       - name: List Contents
-        run: ls -l /_site
+        run: ls -l site
 
       - name: List Contents 2
-        run: ls -l /build/web
+        run: ls -l build/web
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v2
+        with:
+          path: site
 
   # Deployment job
   deploy:
